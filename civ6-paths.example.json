@@ -1,0 +1,8 @@
+{
+  "_comment": "Copy to civ6-paths.json to override auto-detected mod locations. Any key may be omitted to keep the guessed default. 'workshop' may be a single path or an array of paths.",
+  "localMods": "C:/Users/you/OneDrive/Documents/My Games/Sid Meier's Civilization VI/Mods",
+  "workshop": [
+    "C:/Program Files (x86)/Steam/steamapps/workshop/content/289070"
+  ],
+  "saves": "C:/Users/you/OneDrive/Documents/My Games/Sid Meier's Civilization VI/Saves/Single"
+}

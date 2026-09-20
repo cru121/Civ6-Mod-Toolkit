@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Civ6 Config Mod Editor</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Civilization VI &mdash; Config Mod Editor</h1>
+    <p class="sub">Add or remove mods in an existing game configuration without recreating it.</p>
+  </header>
+
+  <details id="paths">
+    <summary>Mod folders <span id="pathsBadge" class="badge"></span></summary>
+    <div class="paths-grid">
+      <label>Local / custom mods
+        <input id="pathLocal" type="text" spellcheck="false" />
+      </label>
+      <label>Steam Workshop
+        <input id="pathWorkshop" type="text" spellcheck="false" />
+      </label>
+      <label>Saves folder
+        <input id="pathSaves" type="text" spellcheck="false" />
+      </label>
+      <div class="paths-actions">
+        <button id="savePaths">Save paths</button>
+        <button id="rescan" class="secondary">Rescan</button>
+        <span id="pathsMsg" class="msg"></span>
+      </div>
+    </div>
+  </details>
+
+  <section class="picker">
+    <label for="configSelect">Configuration file</label>
+    <select id="configSelect"><option value="">Loading…</option></select>
+    <span id="configMeta" class="meta"></span>
+  </section>
+
+  <main id="editor" hidden>
+    <div class="columns">
+      <section class="col">
+        <h2>Enabled in this config <span id="enabledCount" class="count"></span></h2>
+        <p class="hint">Uncheck an installed mod to remove it. Official DLC / mods not found in your folders are shown for reference and can't be toggled here.</p>
+        <div id="enabledList" class="list"></div>
+      </section>
+
+      <section class="col">
+        <h2>Installed but not enabled <span id="availCount" class="count"></span></h2>
+        <input id="availFilter" class="filter" type="search" placeholder="Filter by name…" />
+        <div id="availList" class="list"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer id="bar" hidden>
+    <div id="pending" class="pending">No changes</div>
+    <div class="bar-actions">
+      <button id="saveOverwrite" disabled>Save (overwrite + backup)</button>
+      <button id="saveNew" class="secondary" disabled>Save as new file…</button>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

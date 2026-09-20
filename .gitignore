@@ -1,0 +1,13 @@
+# dependencies (installed via `npm install` / the launcher)
+node_modules/
+
+# never commit real game files or personal data
+*.Civ6Cfg
+*.Civ6Save
+*.bak-*
+civ6-paths.json
+
+# misc
+scratch_*
+*.log
+.DS_Store

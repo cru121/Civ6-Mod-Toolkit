@@ -1,0 +1,22 @@
+{
+  "name": "civ6-config-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Add/remove mods in Civilization VI .Civ6Cfg configuration files (and saves).",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "phase0": "node src/phase0-roundtrip.js",
+    "phase1": "node src/phase1-inventory.js",
+    "phase2": "node src/phase2-save.js",
+    "edit": "node src/edit-config.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "buffer-v6-polyfill": "^1.0.5",
+    "diacritics": "^1.3.0",
+    "iconv-lite": "^0.6.3",
+    "lodash": "^4.17.21",
+    "minimist": "^1.2.8"
+  }
+}
