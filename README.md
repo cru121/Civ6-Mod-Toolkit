@@ -124,6 +124,12 @@ configuration).
   changes only the enabled/disabled flags, and checks the result — if anything
   looks wrong, the backup is put back.
 
+## Authors & feedback
+
+Made by **cru121** (Steam: *evzenhouzvicka*) together with Claude, Anthropic's
+AI assistant. Questions, bugs or ideas? Please
+[open an issue](https://github.com/cru121/Civ6Cfg-editor/issues).
+
 ## What's under the hood
 
 A small Node server (`src/server.js`) exposes a JSON API used by the browser UI

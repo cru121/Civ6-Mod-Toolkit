@@ -11,6 +11,8 @@
     "phase2": "node src/phase2-save.js",
     "edit": "node src/edit-config.js"
   },
+  "author": "cru121 (with Claude, Anthropic)",
+  "repository": "github:cru121/Civ6Cfg-editor",
   "license": "MIT",
   "dependencies": {
     "buffer-v6-polyfill": "^1.0.5",

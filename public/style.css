@@ -265,3 +265,6 @@ button.small { padding: 5px 10px; font-size: 12.5px; }
   body[data-page=mods] .pane { display: flex; flex-direction: column; min-height: 0; }
   body[data-page=mods] #modsBar { position: static; flex: none; margin: 0 -20px; }
 }
+
+.credits { margin: 26px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
+.credits a { color: var(--accent); }
