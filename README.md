@@ -128,7 +128,7 @@ configuration).
 
 Made by **cru121** (Steam: *evzenhouzvicka*) together with Claude, Anthropic's
 AI assistant. Questions, bugs or ideas? Please
-[open an issue](https://github.com/cru121/Civ6Cfg-editor/issues).
+[open an issue](https://github.com/cru121/Civ6-Mod-Toolkit/issues).
 
 ## What's under the hood
 

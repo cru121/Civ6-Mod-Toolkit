@@ -12,7 +12,7 @@
     "edit": "node src/edit-config.js"
   },
   "author": "cru121 (with Claude, Anthropic)",
-  "repository": "github:cru121/Civ6Cfg-editor",
+  "repository": "github:cru121/Civ6-Mod-Toolkit",
   "license": "MIT",
   "dependencies": {
     "buffer-v6-polyfill": "^1.0.5",
