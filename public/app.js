@@ -5,7 +5,6 @@
 
 const $ = (id) => document.getElementById(id);
 const pages = {}; // name -> { show(params) }
-pages.mods = {};  // placeholder page until the mod manager lands
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
@@ -92,9 +91,14 @@ const game = { running: false, known: false };
 function setGameStatus(g) {
   Object.assign(game, g);
   const pill = $('gamePill');
-  if (!g.known) { pill.className = 'pill'; pill.textContent = 'Game status unknown'; return; }
-  pill.className = 'pill ' + (g.running ? 'bad' : 'good');
-  pill.textContent = g.running ? 'Civ6 is running' : 'Civ6 is closed';
+  if (!g.known) {
+    pill.className = 'pill';
+    pill.textContent = 'Game status unknown';
+  } else {
+    pill.className = 'pill ' + (g.running ? 'bad' : 'good');
+    pill.textContent = g.running ? 'Civ6 is running' : 'Civ6 is closed';
+  }
+  document.dispatchEvent(new CustomEvent('gamestatus')); // pages that write react to this
 }
 
 async function pollGame() {

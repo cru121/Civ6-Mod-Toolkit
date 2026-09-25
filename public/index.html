@@ -107,13 +107,45 @@
 
   <!-- ===== Mod manager ===== -->
   <section class="page" id="page-mods" hidden>
+    <div id="modsAlerts"></div>
+
+    <div class="toolbar">
+      <div class="seg" id="srcFilter">
+        <button type="button" data-src="mods">All mods <span></span></button>
+        <button type="button" data-src="workshop">Workshop <span></span></button>
+        <button type="button" data-src="local">Local <span></span></button>
+        <button type="button" data-src="dlc">Official DLC <span></span></button>
+      </div>
+      <div class="seg" id="stateFilter">
+        <button type="button" data-state="all">Any</button>
+        <button type="button" data-state="on">Enabled</button>
+        <button type="button" data-state="off">Disabled</button>
+      </div>
+      <input id="modsFilter" class="filter" type="search" placeholder="Filter by name…" />
+    </div>
+
     <section class="panel">
-      <h2>Mod manager</h2>
-      <p class="hint">Coming next: turn mods on and off without starting the game.</p>
+      <div class="panel-head">
+        <h2>Mods <span id="modsCount" class="count"></span></h2>
+        <div class="panel-actions">
+          <button id="enableShown" class="secondary">Enable all shown</button>
+          <button id="disableShown" class="secondary">Disable all shown</button>
+        </div>
+      </div>
+      <p class="hint" id="modsHint"></p>
+      <div id="modsList" class="list tall"></div>
     </section>
   </section>
 
-  <footer id="bar" hidden>
+  <footer id="modsBar" class="actionbar">
+    <div id="modsPending" class="pending">No changes</div>
+    <div class="bar-actions">
+      <button id="applyMods" disabled>Apply changes</button>
+      <button id="discardMods" class="secondary" disabled>Discard</button>
+    </div>
+  </footer>
+
+  <footer id="bar" class="actionbar" hidden>
     <div id="pending" class="pending">No changes</div>
     <div class="bar-actions">
       <button id="saveOverwrite" disabled>Save (overwrite + backup)</button>
@@ -126,5 +158,6 @@
   <script src="app.js"></script>
   <script src="dashboard.js"></script>
   <script src="config.js"></script>
+  <script src="mods.js"></script>
 </body>
 </html>

@@ -124,8 +124,14 @@ schema `user_version` 24:
 - `Mods(ModRowId, ScannedFileRowId, ModId, Version)` + `ScannedFiles(Path)` —
   user mods have absolute paths; DLC / base content is relative
   (`../../../DLC/...`, `../../../Base/...`).
-- `ModProperties` / `LocalizedText` — display name etc.; `ModRelationships` /
-  `ComponentRelationships` — dependencies, already parsed by the game.
+- `ModProperties` / `LocalizedText` — display name etc. DLC titles are often
+  missing from the DLC's own `LocalizedText` rows (the text lives in game
+  files); the same tag under another mod, or the `OtherModTitle` other mods use
+  when referencing it, usually resolves it.
+- `ModRelationships(ModRowId, OtherModId, Relationship, OtherModTitle)` —
+  `Dependency` (needs), `Block` (incompatible), `Reference` / `ReverseReference`
+  (load-order hints). The mod manager warns on the first two.
+  `ComponentRelationships` holds per-component `Include` / `Required`.
 
 Behaviour verified in-game (2026-09-25): setting `Disabled=1` with the game
 closed shows the mod as disabled in *Additional Content*, and the flag survives
@@ -135,7 +141,20 @@ change on rescan**, so always key by `ModId`. The `Migrations` table (run on
 schema upgrades) copies `ModGroupItems` without `Disabled`, so a game patch that
 bumps the schema would re-enable everything.
 
+## Mod manager (done)
+
+`POST /api/mods/apply` refuses while the game runs (process check), backs up
+`Mods.sqlite` (keeps the newest 10 `.bak-YYYYMMDD-HHMMSS`), updates
+`ModGroupItems.Disabled` for the active group in one `BEGIN IMMEDIATE`
+transaction keyed by `ModId`, runs `PRAGMA quick_check`, reads the flags back,
+and restores the backup if anything fails after the commit. Mods on disk that
+the game hasn't scanned, and DB mods with no row in the active group (e.g.
+unowned DLC), are shown but can't be toggled.
+
 ## Possible follow-ups
+
+- Delete local mods / "open Steam page to unsubscribe" for Workshop mods.
+- Mod-group (profile) management; sync a group with a `.Civ6Cfg`'s mod list.
 
 - Proper UTF-8/UTF-16 handling for non-Latin mod titles (cosmetic only today).
 - One-click launcher (e.g. a `.cmd` / packaged app) so there's no terminal at all.
