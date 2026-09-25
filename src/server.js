@@ -16,7 +16,7 @@ const cfg = require('./civ6cfg');
 const { scanMods, normId } = require('./modinfo');
 const inventory = require('./inventory');
 const editor = require('./editor');
-const { readModState, applyChanges } = require('./modsdb');
+const { readModState, readModDetails, applyChanges } = require('./modsdb');
 const { gameStatus } = require('./game');
 
 const PORT = parseInt(process.env.PORT, 10) || 8673;
@@ -83,6 +83,7 @@ function modList() {
       source: f ? f.type : d.source,
       enabled: d.disabled == null ? null : !d.disabled,
       scanned: true,
+      teaser: d.teaser,
       workshopId: f ? f.workshopId || null : null,
       folder: f ? f.folder : null,
       requires: d.requires,
@@ -94,7 +95,7 @@ function modList() {
     for (const f of installed) {
       if (inDb.has(f.idNorm)) continue;
       out.push({
-        id: f.id, idNorm: f.idNorm, name: f.name, source: f.type, enabled: null, scanned: false,
+        id: f.id, idNorm: f.idNorm, name: f.name, source: f.type, enabled: null, scanned: false, teaser: null,
         workshopId: f.workshopId || null, folder: f.folder, requires: [], blocks: [],
       });
     }
@@ -102,6 +103,25 @@ function modList() {
   const plain = (n) => n.replace(/\[[^\]]*\]/g, '').trim(); // sort without Civ [COLOR_*] markup
   out.sort((a, b) => plain(a.name).localeCompare(plain(b.name), undefined, { sensitivity: 'base' }));
   return { modsDb, ok: st.ok, error: st.error || null, activeGroup: st.activeGroup || null, mods: out };
+}
+
+// Size, file count and newest modification time of a mod folder.
+function folderStats(dir) {
+  const st = { files: 0, bytes: 0, modified: 0 };
+  (function walk(d, depth) {
+    if (depth > 12) return;
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch (_) { return; }
+    for (const e of entries) {
+      const full = path.join(d, e.name);
+      if (e.isDirectory()) { walk(full, depth + 1); continue; }
+      try {
+        const s = fs.statSync(full);
+        st.files++; st.bytes += s.size; st.modified = Math.max(st.modified, s.mtimeMs);
+      } catch (_) { /* skip */ }
+    }
+  })(dir, 0);
+  return st;
 }
 
 // -------- API ---------------------------------------------------------------
@@ -160,6 +180,28 @@ async function handleApi(req, res, url) {
   if (req.method === 'GET' && url.pathname === '/api/mods') {
     const list = modList();
     return send(res, 200, { ...list, game: await gameStatus() });
+  }
+
+  // GET /api/mods/details?id=... -> everything the details panel shows
+  if (req.method === 'GET' && url.pathname === '/api/mods/details') {
+    const idNorm = normId(url.searchParams.get('id'));
+    const list = modList();
+    const mod = list.mods.find((m) => m.idNorm === idNorm);
+    if (!mod) return send(res, 404, { error: 'mod not found' });
+    const inConfigs = [];
+    for (const c of listConfigs().configs) {
+      try {
+        if (cfg.listMods(fs.readFileSync(c.path)).mods.some((m) => normId(m.id) === idNorm)) inConfigs.push(c.name);
+      } catch (_) { /* unreadable config: skip */ }
+    }
+    return send(res, 200, {
+      mod,
+      db: list.ok ? readModDetails(list.modsDb.path, mod.id) : null,
+      disk: mod.folder ? { folder: mod.folder, ...folderStats(mod.folder) } : null,
+      requiredBy: list.mods.filter((m) => m.requires.some((r) => r.id === idNorm)).map((m) => ({ id: m.idNorm, name: m.name, enabled: m.enabled })),
+      blockedBy: list.mods.filter((m) => m.blocks.some((r) => r.id === idNorm)).map((m) => ({ id: m.idNorm, name: m.name, enabled: m.enabled })),
+      inConfigs,
+    });
   }
 
   // POST /api/mods/apply { changes:[{ id, enabled }] } -> write enable flags

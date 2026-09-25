@@ -63,6 +63,20 @@ function prettyName(s) {
   return words.map((w, i) => (i > 0 && small.has(w) ? w : w[0].toUpperCase() + w.slice(1))).join(' ') || s;
 }
 
+// SQL for a ModProperties row's text: the mod's own English text for the tag,
+// else the tag's English text from any mod, else the raw value.
+function resolved(alias) {
+  return `COALESCE(
+      (SELECT Text FROM LocalizedText WHERE ModRowId = ${alias}.ModRowId AND Tag = ${alias}.Value AND Locale = 'en_US'),
+      (SELECT Text FROM LocalizedText WHERE Tag = ${alias}.Value AND Locale = 'en_US' LIMIT 1),
+      ${alias}.Value)`;
+}
+
+// A resolved text that is still a bare LOC_ key (or JSON-wrapped one) is useless to show.
+function usable(text) {
+  return text && !/LOC_[A-Z0-9_]+/i.test(text) ? text : null;
+}
+
 // Display name: the mod's own English text, else the same LOC tag's English
 // text from any mod (DLC titles are often stored under another row), else the
 // title other mods use when they reference it, else the raw value.
@@ -74,6 +88,7 @@ const MODS_SQL = `
       (SELECT OtherModTitle FROM ModRelationships WHERE lower(OtherModId) = lower(m.ModId)
          AND OtherModTitle IS NOT NULL AND instr(OtherModTitle, 'LOC_') = 0 LIMIT 1),
       p.Value) AS name,
+    (SELECT ${resolved('t')} FROM ModProperties t WHERE t.ModRowId = m.ModRowId AND t.Name = 'Teaser') AS teaser,
     (SELECT Value FROM ModProperties WHERE ModRowId = m.ModRowId AND Name = 'ShowInBrowser') AS showInBrowser
   FROM Mods m
   JOIN ScannedFiles s ON s.ScannedFileRowId = m.ScannedFileRowId
@@ -86,7 +101,7 @@ const REL_SQL = `
   WHERE r.Relationship IN ('Dependency', 'Block')`;
 
 // -> { ok, error?, activeGroup, groups:[], mods:[{ modId, idNorm, name, path,
-//      source, disabled, hidden, requires:[{id,title}], blocks:[{id,title}] }] }
+//      source, disabled, teaser, hidden, requires:[{id,title}], blocks:[{id,title}] }] }
 // disabled is null when the mod has no row in the active group.
 function readModState(dbPath) {
   if (!DatabaseSync) return { ok: false, error: loadError, groups: [], mods: [] };
@@ -111,6 +126,7 @@ function readModState(dbPath) {
         path: r.path,
         source: classifyPath(r.path),
         disabled: r.disabled == null ? null : !!r.disabled,
+        teaser: usable(r.teaser),
         hidden: r.showInBrowser === 'AlwaysHidden',
         requires: rel.requires,
         blocks: rel.blocks,
@@ -119,6 +135,36 @@ function readModState(dbPath) {
     return { ok: true, activeGroup: active, groups, mods };
   } catch (e) {
     return { ok: false, error: `Could not read the mod database: ${e.message}`, groups: [], mods: [] };
+  } finally {
+    try { if (db) db.close(); } catch (_) { /* ignore */ }
+  }
+}
+
+// Everything the details panel shows for one mod, or null if it isn't in the
+// database: { version, properties:{Name: text}, components:{Type: n},
+// settings:{Type: n}, fileCount }.
+function readModDetails(dbPath, modId) {
+  if (!DatabaseSync) return null;
+  let db;
+  try {
+    db = new DatabaseSync(dbPath, { readOnly: true });
+    const mod = db.prepare('SELECT ModRowId AS rowId, Version AS version FROM Mods WHERE lower(ModId) = lower(?)').get(String(modId));
+    if (!mod) return null;
+    const properties = {};
+    for (const r of db.prepare(`SELECT p.Name AS name, ${resolved('p')} AS text FROM ModProperties p WHERE p.ModRowId = ?`).all(mod.rowId)) {
+      const t = usable(r.text);
+      if (t != null) properties[r.name] = t;
+    }
+    const counts = (sql) => Object.fromEntries(db.prepare(sql).all(mod.rowId).map((r) => [r.type, r.n]));
+    return {
+      version: mod.version,
+      properties,
+      components: counts('SELECT ComponentType AS type, count(*) AS n FROM Components WHERE ModRowId = ? GROUP BY 1'),
+      settings: counts('SELECT SettingType AS type, count(*) AS n FROM Settings WHERE ModRowId = ? GROUP BY 1'),
+      fileCount: db.prepare('SELECT count(*) AS n FROM ModFiles WHERE ModRowId = ?').get(mod.rowId).n,
+    };
+  } catch (_) {
+    return null;
   } finally {
     try { if (db) db.close(); } catch (_) { /* ignore */ }
   }
@@ -195,4 +241,4 @@ function applyChanges(dbPath, changes) {
   }
 }
 
-module.exports = { readModState, applyChanges, classifyPath };
+module.exports = { readModState, readModDetails, applyChanges, classifyPath };

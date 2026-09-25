@@ -65,10 +65,19 @@ the game hasn't picked it up yet — start Civ6 once and it will.
    filter by name.
 2. Tick or untick mods. **Enable all shown** / **Disable all shown** work on
    whatever the current filter shows. Changed rows are highlighted.
-3. Warnings appear under a mod that is turned on but needs something that's off
+
+   Prefer moving mods between lists? Switch to **Two panes**: *Available* on
+   the left, *Enabled* on the right — click a mod to move it across, or use
+   **Enable all →** / **← Disable all**. The toolkit remembers which view you
+   picked.
+3. Click **i** on any mod for its details: description, authors, version,
+   whether it affects saved games, what it changes (gameplay, UI, art, maps…),
+   what it needs, what needs it, what it's incompatible with, which of your
+   `.Civ6Cfg` configurations use it, and its folder, size and Workshop page.
+4. Warnings appear under a mod that is turned on but needs something that's off
    or missing (**Turn it on** fixes it), or that conflicts with another mod
    that's on.
-4. Click **Apply changes** (or **Discard**). The game must be **closed** —
+5. Click **Apply changes** (or **Discard**). The game must be **closed** —
    applying is blocked while Civ6 runs. Changes take effect the next time you
    start the game.
 

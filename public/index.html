@@ -122,6 +122,10 @@
         <button type="button" data-state="off">Disabled</button>
       </div>
       <input id="modsFilter" class="filter" type="search" placeholder="Filter by name…" />
+      <div class="seg" id="viewSwitch" title="How to show the mods">
+        <button type="button" data-view="list">List</button>
+        <button type="button" data-view="panes">Two panes</button>
+      </div>
     </div>
 
     <section class="panel">
@@ -134,7 +138,30 @@
       </div>
       <p class="hint" id="modsHint"></p>
       <div id="modsList" class="list tall"></div>
+      <div id="modsPanes" class="columns" hidden>
+        <section class="col pane">
+          <div class="pane-head">
+            <h2>Available <span id="paneOffCount" class="count"></span></h2>
+            <button id="enableAllPane" class="secondary small" title="Enable every mod shown in this pane">Enable all →</button>
+          </div>
+          <p class="hint">Click a mod to enable it.</p>
+          <div id="paneOff" class="list tall"></div>
+        </section>
+        <section class="col pane">
+          <div class="pane-head">
+            <h2>Enabled <span id="paneOnCount" class="count"></span></h2>
+            <button id="disableAllPane" class="secondary small" title="Disable every mod shown in this pane">← Disable all</button>
+          </div>
+          <p class="hint">Click a mod to disable it.</p>
+          <div id="paneOn" class="list tall"></div>
+        </section>
+      </div>
     </section>
+
+    <dialog id="modDialog" class="dialog">
+      <button type="button" class="dialog-close" id="modDialogClose" title="Close">×</button>
+      <div id="modDialogBody"></div>
+    </dialog>
   </section>
 
   <footer id="modsBar" class="actionbar">
