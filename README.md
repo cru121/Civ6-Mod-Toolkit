@@ -13,6 +13,8 @@ A mod toolkit for Sid Meier's Civilization VI that runs outside the game:
   broken mod stops the game from starting, or when the in-game mod screen is
   slow.
 
+Website: <https://cru121.github.io/Civ6-Mod-Toolkit/>
+
 Not affiliated with or endorsed by Firaxis Games or 2K.
 
 ## Install and run

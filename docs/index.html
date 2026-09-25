@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Civ6 Mod Toolkit</title>
+<meta name="description" content="Turn Civilization VI mods on and off and edit .Civ6Cfg game configurations without starting the game.">
+<style>
+  :root {
+    --bg: #0f1216; --panel: #171c22; --panel-2: #1e252d; --border: #2a333d;
+    --text: #e6edf3; --muted: #8b98a5; --accent: #4ea1ff; --accent-dim: #27405e;
+    --add: #3fb950; --radius: 8px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f4f6f8; --panel: #fff; --panel-2: #f0f3f6; --border: #d5dce3;
+      --text: #1b232b; --muted: #5c6773; --accent: #1a6fd4; --accent-dim: #d6e6fb;
+      --add: #1f883d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); }
+  .topbar {
+    position: sticky; top: 0; z-index: 5;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--border);
+  }
+  .brand { font-weight: 700; font-size: 17px; }
+  .topbar nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  .topbar nav a { color: var(--muted); text-decoration: none; padding: 5px 10px; border-radius: 6px; font-weight: 600; font-size: 14px; }
+  .topbar nav a:hover { color: var(--text); background: var(--panel-2); }
+  main { max-width: 820px; margin: 0 auto; padding: 0 16px 80px; }
+  .hero { padding: 48px 0 28px; }
+  h1 { font-size: clamp(30px, 6vw, 42px); line-height: 1.15; margin: 0 0 12px; }
+  .lede { font-size: 18px; color: var(--muted); margin: 0 0 24px; max-width: 640px; }
+  .download {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 20px; border-radius: var(--radius);
+    background: var(--accent); color: #fff; font-weight: 700; text-decoration: none;
+  }
+  .download:hover { filter: brightness(1.1); }
+  .download svg { width: 18px; height: 18px; flex: none; }
+  .meta { margin-top: 10px; font-size: 14px; color: var(--muted); }
+  h2 { font-size: 22px; margin: 44px 0 12px; padding-top: 8px; }
+  h3 { font-size: 17px; margin: 22px 0 6px; }
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .card { padding: 16px 18px; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
+  .card h3 { margin: 0 0 6px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  ol, ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  code, kbd {
+    font: 14px ui-monospace, SFMono-Regular, Consolas, monospace;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 1px 5px;
+  }
+  pre { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; overflow-x: auto; }
+  pre code { background: none; border: 0; padding: 0; }
+  .note { padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--panel); border-radius: 0 var(--radius) var(--radius) 0; }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <span class="brand">Civ6 Mod Toolkit</span>
+  <nav>
+    <a href="#install">Install</a>
+    <a href="#usage">Usage</a>
+    <a href="#safety">Safety</a>
+    <a href="https://github.com/cru121/Civ6-Mod-Toolkit">GitHub</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <h1>Manage your Civ VI mods without starting the game</h1>
+    <p class="lede">A small Windows tool for Sid Meier's Civilization VI. It opens in your browser. You can turn mods and DLC on and off, and add or remove mods in a saved game configuration without setting it up again.</p>
+    <a class="download" id="download" href="https://github.com/cru121/Civ6-Mod-Toolkit/releases/download/v1.0.0/Civ6-Mod-Toolkit-v1.0.0.zip">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
+      <span id="download-label">Download v1.0.0</span>
+    </a>
+    <div class="meta"><span id="download-meta">Windows 10 or 11 · needs Node.js 22.5+</span> · <a href="https://github.com/cru121/Civ6-Mod-Toolkit/releases">All releases</a></div>
+  </section>
+
+  <div class="features">
+    <div class="card"><h3>Dashboard</h3><p>Shows your Workshop and local mods, saved configurations, official DLC, whether the game is running, and which folders the toolkit uses.</p></div>
+    <div class="card"><h3>Mod manager</h3><p>Turn mods and DLC on or off, with warnings about missing dependencies and conflicts. Useful when a broken mod stops the game from starting.</p></div>
+    <div class="card"><h3>Config editor</h3><p>Add or remove mods in an existing <code>.Civ6Cfg</code>. Your other game settings stay as they are.</p></div>
+  </div>
+
+  <h2 id="install">Install and run</h2>
+  <ol>
+    <li><strong>Download</strong> the zip using the button above.</li>
+    <li><strong>Unblock it</strong> (recommended): right-click the zip → <em>Properties</em> → tick <strong>Unblock</strong> → <em>OK</em>. If you skip this step, Windows may show <em>"Windows protected your PC"</em>. If it does, click <em>More info</em> → <em>Run anyway</em>.</li>
+    <li><strong>Extract</strong> the zip to any folder, such as Documents.</li>
+    <li><strong>Double-click <code>Civ6 Mod Toolkit.cmd</code></strong>. The toolkit opens in your browser.</li>
+  </ol>
+  <p class="note">The toolkit needs <a href="https://nodejs.org">Node.js</a> 22.5 or newer. If it's missing or out of date, the launcher can install it for you with Windows' built-in <code>winget</code>, or open the download page.</p>
+  <p>While the toolkit runs, a small window stays open. Press <kbd>O</kbd> to open the toolkit in your browser again, <kbd>R</kbd> to restart it, or <kbd>S</kbd> to stop it. Closing the window also stops the toolkit.</p>
+
+  <h3>From source</h3>
+  <pre><code>npm install
+npm start</code></pre>
+  <p>Then open <code>http://127.0.0.1:8673</code>.</p>
+
+  <h2 id="usage">Usage</h2>
+  <h3>Dashboard</h3>
+  <p>The toolkit finds your mod folders, configurations folder and the game's <code>Mods.sqlite</code> database automatically. If one shows <strong>not found</strong>, click <strong>Edit paths</strong>. If you just installed a mod, start Civ6 once so the game registers it.</p>
+
+  <h3>Mod manager</h3>
+  <ol>
+    <li>Filter by <strong>Workshop</strong>, <strong>Local</strong> or <strong>Official DLC</strong>, by enabled or disabled, or by name.</li>
+    <li>Tick or untick mods, or switch to <strong>Two panes</strong> and click mods to move them between <em>Available</em> and <em>Enabled</em>.</li>
+    <li>Click <strong>i</strong> on a mod to see its details, dependencies, conflicts, and which of your configurations use it.</li>
+    <li>Click <strong>Apply changes</strong>. Civ6 must be <strong>closed</strong> first.</li>
+  </ol>
+
+  <h3>Config editor</h3>
+  <ol>
+    <li>Pick a configuration file.</li>
+    <li>Untick mods on the left to remove them, and tick installed mods on the right to add them.</li>
+    <li>Choose <strong>Save (overwrite + backup)</strong> or <strong>Save as new file…</strong>.</li>
+    <li>In the game, go to Single Player → Create Game and load the configuration.</li>
+  </ol>
+
+  <h2 id="safety">Safety</h2>
+  <ul>
+    <li>Before it overwrites a file, the toolkit saves a timestamped backup (<code>.bak-…</code>).</li>
+    <li>It changes only the mod list in a configuration, and checks the result before writing. If the check fails, nothing is written.</li>
+    <li>It changes the mod database only while Civ6 is closed. It changes only the enabled/disabled flags, and restores the backup if the result looks wrong.</li>
+    <li>It listens only on <code>127.0.0.1</code>, and accepts requests only from its own page.</li>
+  </ul>
+
+  <footer>
+    Made by <strong>cru121</strong> (Steam: <em>evzenhouzvicka</em>) together with Claude, Anthropic's AI assistant.
+    Bugs or ideas? <a href="https://github.com/cru121/Civ6-Mod-Toolkit/issues">Open an issue</a>.<br>
+    Not affiliated with or endorsed by Firaxis Games or 2K.
+  </footer>
+</main>
+
+<script>
+  // Point the download button at the newest release's zip. The static href is the fallback.
+  fetch('https://api.github.com/repos/cru121/Civ6-Mod-Toolkit/releases/latest')
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(rel => {
+      const zip = (rel.assets || []).find(a => /\.zip$/i.test(a.name));
+      if (!zip) return;
+      document.getElementById('download').href = zip.browser_download_url;
+      document.getElementById('download-label').textContent = 'Download ' + rel.tag_name;
+      const mb = (zip.size / 1048576).toFixed(1);
+      document.getElementById('download-meta').textContent =
+        mb + ' MB · Windows 10 or 11 · needs Node.js 22.5+';
+    })
+    .catch(() => {});
+</script>
+</body>
+</html>
