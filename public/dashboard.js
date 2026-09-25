@@ -25,6 +25,7 @@ function folderRow(label, value, ok, note) {
 function renderDashboard() {
   const d = dash.data;
   const dbOk = d.modsDb.ok;
+  $('appVersion').textContent = d.version ? ` v${d.version}` : '';
   $('cWorkshop').textContent = ratio(d.counts.workshop, dbOk);
   $('cLocal').textContent = ratio(d.counts.local, dbOk);
   $('cConfigs').textContent = d.counts.configs;

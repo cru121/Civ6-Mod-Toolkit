@@ -15,14 +15,25 @@ A mod toolkit for Sid Meier's Civilization VI that runs outside the game:
 
 Not affiliated with or endorsed by Firaxis Games or 2K.
 
-## Run it (easiest)
+## Install and run
 
-You need [Node.js](https://nodejs.org) installed once (any recent version).
+Windows 10 or 11.
 
-Then just **double-click `Civ6 Mod Toolkit.cmd`** in this folder. The first
-run installs what it needs (one-time), then your browser opens to the toolkit
-automatically. A small window stays open while the toolkit runs, with a menu —
-just press a key:
+1. **Download** `Civ6-Mod-Toolkit-vX.Y.Z.zip` from the
+   [latest release](https://github.com/cru121/Civ6-Mod-Toolkit/releases/latest).
+2. **Unblock it** (recommended): right-click the zip → *Properties* → tick
+   **Unblock** → *OK*. Otherwise Windows may show a blue *"Windows protected
+   your PC"* warning when you start the launcher — if it does, click
+   *More info* → *Run anyway*.
+3. **Extract** the zip anywhere (e.g. your Documents folder).
+4. **Double-click `Civ6 Mod Toolkit.cmd`.** Your browser opens to the toolkit.
+
+The toolkit needs [Node.js](https://nodejs.org) **22.5 or newer**. If it's
+missing or too old, the launcher tells you and offers to install it for you
+(using Windows' built-in `winget`) or to open the download page.
+
+A small window stays open while the toolkit runs, with a menu — just press a
+key:
 
 - **O** — open the toolkit in your browser (e.g. if you closed the tab)
 - **R** — restart the toolkit
@@ -31,14 +42,14 @@ just press a key:
 Closing the window also stops the toolkit. (The launcher uses `curl`, which is
 built into Windows 10 and newer.)
 
-Reading which mods are enabled needs Node.js **22.5 or newer**; with an older
-version everything else still works.
-
 Tip: right-click `Civ6 Mod Toolkit.cmd` → *Send to* → *Desktop (create
 shortcut)* to launch it from your desktop. You can rename the shortcut and change
 its icon.
 
-### Or from a terminal
+### From the source code / a terminal
+
+If you cloned the repository or downloaded the *Source code* zip instead, the
+launcher installs the dependencies on first run (needs internet once). Or:
 
 ```bash
 npm install

@@ -1,6 +1,6 @@
 {
   "name": "civ6-mod-toolkit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Civilization VI mod toolkit: edit mods in .Civ6Cfg game configurations and see which mods are enabled.",
   "type": "commonjs",

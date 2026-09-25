@@ -19,6 +19,7 @@ const editor = require('./editor');
 const { readModState, readModDetails, applyChanges } = require('./modsdb');
 const { gameStatus } = require('./game');
 
+const { version: VERSION } = require('../package.json');
 const PORT = parseInt(process.env.PORT, 10) || 8673;
 const HOST = '127.0.0.1';
 const PUBLIC = path.join(__dirname, '..', 'public');
@@ -158,6 +159,7 @@ async function handleApi(req, res, url) {
     const official = dbState.mods.filter((m) => m.source === 'dlc');
     const { configs } = listConfigs();
     return send(res, 200, {
+      version: VERSION,
       sources,
       saves: paths.getSavesDir(),
       modsDb: { ...modsDb, ok: dbState.ok, error: dbState.error || null, activeGroup: dbState.activeGroup || null },

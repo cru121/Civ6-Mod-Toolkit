@@ -9,14 +9,72 @@ rem Tells the server it's running under this launcher (no "Ctrl+C" hint).
 set "CIV6_LAUNCHER=1"
 
 where node >nul 2>nul
+if errorlevel 1 goto no_node
+rem The Mod manager reads the game's mod database with Node's built-in SQLite
+rem (Node 22.5+). Older Node runs everything else.
+node -e "const [a,b]=process.versions.node.split('.').map(Number);process.exit(a>22||(a===22&&b>=5)?0:1)"
+if errorlevel 1 goto old_node
+goto node_ok
+
+:no_node
+echo.
+echo   The Civ6 Mod Toolkit needs Node.js, which isn't installed on this PC.
+set "NODE_WHY=install"
+goto get_node
+
+:old_node
+for /f "delims=" %%v in ('node -v') do set "NODE_VER=%%v"
+echo.
+echo   Your Node.js %NODE_VER% is too old for the Mod manager, which needs 22.5 or newer.
+echo   Everything else works, but updating is recommended.
+set "NODE_WHY=update"
+goto get_node
+
+:get_node
+set "HAS_WINGET="
+where winget >nul 2>nul
+if not errorlevel 1 set "HAS_WINGET=1"
+echo.
+if defined HAS_WINGET echo     [I]  Install Node.js LTS automatically ^(using winget^)
+echo     [D]  Open the Node.js download page in your browser
+if "%NODE_WHY%"=="update" echo     [C]  Continue without updating
+echo     [Q]  Quit
+echo.
+choice /c IDCQ /n /m "  Press a key: "
+if errorlevel 4 exit /b 1
+if errorlevel 3 goto get_node_continue
+if errorlevel 2 goto get_node_download
+if not defined HAS_WINGET goto get_node
+echo.
+echo   Installing Node.js LTS - Windows may ask you to confirm...
+echo.
+winget install --id OpenJS.NodeJS.LTS -e
 if errorlevel 1 (
   echo.
-  echo   Node.js is required but was not found on this PC.
-  echo   Install it from https://nodejs.org  then double-click this file again.
-  echo.
-  pause
-  exit /b 1
+  echo   The automatic install didn't finish. Try the download page instead [D].
+  goto get_node
 )
+echo.
+echo   Node.js is installed. Close this window and double-click
+echo   "Civ6 Mod Toolkit.cmd" again - Windows needs a fresh window to find it.
+echo.
+pause
+exit /b 0
+
+:get_node_continue
+if not "%NODE_WHY%"=="update" goto get_node
+goto node_ok
+
+:get_node_download
+start "" "https://nodejs.org/en/download"
+echo.
+echo   Download and install the LTS version, then double-click
+echo   "Civ6 Mod Toolkit.cmd" again.
+echo.
+pause
+exit /b 1
+
+:node_ok
 
 where curl >nul 2>nul
 if errorlevel 1 (
