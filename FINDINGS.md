@@ -109,6 +109,32 @@ GUID matching still identifies it correctly (e.g. Got Lakes v37.0 vs v37.2).
 
 Status: v1 (add/remove mods) complete. See `README.md` to run.
 
+## Mod database (`Mods.sqlite`) — which mods are enabled
+
+The game records enabled/disabled state in a SQLite database, **not** in
+Documents: `%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI\Mods.sqlite`
+(a Civ VII install has its own `Mods.sqlite` in a sibling folder). Observed
+schema `user_version` 24:
+
+- `ModGroups(ModGroupRowId, Name, CanDelete, Selected, SortIndex)` — the
+  in-game mod groups; `Selected=1` is the active one. The built-in group is
+  `LOC_MODS_GROUP_DEFAULT_NAME` (`CanDelete=0`).
+- `ModGroupItems(ModGroupRowId, ModRowId, Disabled)` — **the enable flag**:
+  `Disabled=1` means the mod is off in that group.
+- `Mods(ModRowId, ScannedFileRowId, ModId, Version)` + `ScannedFiles(Path)` —
+  user mods have absolute paths; DLC / base content is relative
+  (`../../../DLC/...`, `../../../Base/...`).
+- `ModProperties` / `LocalizedText` — display name etc.; `ModRelationships` /
+  `ComponentRelationships` — dependencies, already parsed by the game.
+
+Behaviour verified in-game (2026-09-25): setting `Disabled=1` with the game
+closed shows the mod as disabled in *Additional Content*, and the flag survives
+a launch + exit. On launch the game rescans and adds newly installed mods
+(enabled by default) — until then, a mod on disk has no row. **`ModRowId` can
+change on rescan**, so always key by `ModId`. The `Migrations` table (run on
+schema upgrades) copies `ModGroupItems` without `Disabled`, so a game patch that
+bumps the schema would re-enable everything.
+
 ## Possible follow-ups
 
 - Proper UTF-8/UTF-16 handling for non-Latin mod titles (cosmetic only today).

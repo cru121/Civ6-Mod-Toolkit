@@ -3,58 +3,115 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Civ6 Config Mod Editor</title>
+  <title>Civ6 Mod Toolkit</title>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <header>
-    <h1>Civilization VI &mdash; Config Mod Editor</h1>
-    <p class="sub">Add or remove mods in an existing game configuration without recreating it.</p>
+<body data-page="dashboard">
+  <header class="topbar">
+    <div class="brand">Civ6 Mod Toolkit</div>
+    <nav>
+      <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
+      <a href="#/config" data-nav="config">Config editor</a>
+      <a href="#/mods" data-nav="mods">Mod manager</a>
+    </nav>
+    <span id="gamePill" class="pill" title="Whether Civilization VI is running">Checking game…</span>
   </header>
 
-  <details id="paths">
-    <summary>Mod folders <span id="pathsBadge" class="badge"></span></summary>
-    <div class="paths-grid">
-      <label>Local / custom mods
-        <input id="pathLocal" type="text" spellcheck="false" />
-      </label>
-      <label>Steam Workshop
-        <input id="pathWorkshop" type="text" spellcheck="false" />
-      </label>
-      <label>Saves folder
-        <input id="pathSaves" type="text" spellcheck="false" />
-      </label>
-      <div class="paths-actions">
-        <button id="savePaths">Save paths</button>
-        <button id="rescan" class="secondary">Rescan</button>
-        <span id="pathsMsg" class="msg"></span>
+  <!-- ===== Dashboard ===== -->
+  <section class="page" id="page-dashboard">
+    <div id="dashAlerts"></div>
+
+    <div class="cards">
+      <a class="card" href="#/mods?source=workshop">
+        <span class="card-label">Workshop mods</span>
+        <span class="card-value" id="cWorkshop">–</span>
+        <span class="card-sub">enabled / installed</span>
+      </a>
+      <a class="card" href="#/mods?source=local">
+        <span class="card-label">Local mods</span>
+        <span class="card-value" id="cLocal">–</span>
+        <span class="card-sub">enabled / installed</span>
+      </a>
+      <a class="card" href="#/config">
+        <span class="card-label">Configurations</span>
+        <span class="card-value" id="cConfigs">–</span>
+        <span class="card-sub">.Civ6Cfg files</span>
+      </a>
+      <div class="card muted">
+        <span class="card-label">Official DLC</span>
+        <span class="card-value" id="cDlc">–</span>
+        <span class="card-sub">enabled / known</span>
       </div>
     </div>
-  </details>
 
-  <section class="picker">
-    <label for="configSelect">Configuration file</label>
-    <select id="configSelect"><option value="">Loading…</option></select>
-    <span id="configMeta" class="meta"></span>
-    <button id="deleteConfig" class="danger" disabled title="Delete this configuration file">Delete config…</button>
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Folder setup</h2>
+        <div class="panel-actions">
+          <button id="rescan" class="secondary">Rescan</button>
+          <button id="editPaths" class="secondary">Edit paths</button>
+        </div>
+      </div>
+      <p class="hint">Detected automatically. Edit only if something shows as not found.</p>
+      <div id="folderList" class="folders"></div>
+
+      <form id="pathsForm" class="paths-grid" hidden>
+        <label>Local / custom mods
+          <input id="pathLocal" type="text" spellcheck="false" />
+        </label>
+        <label>Steam Workshop <small>(several folders: separate with ;)</small>
+          <input id="pathWorkshop" type="text" spellcheck="false" />
+        </label>
+        <label>Configurations folder (.Civ6Cfg files)
+          <input id="pathSaves" type="text" spellcheck="false" />
+        </label>
+        <label>Mod database (Mods.sqlite)
+          <input id="pathModsDb" type="text" spellcheck="false" />
+        </label>
+        <div class="paths-actions">
+          <button id="savePaths" type="submit">Save paths</button>
+          <button id="cancelPaths" type="button" class="secondary">Cancel</button>
+          <span id="pathsMsg" class="msg"></span>
+        </div>
+      </form>
+    </section>
   </section>
 
-  <main id="editor" hidden>
-    <div class="columns">
-      <section class="col">
-        <h2>Enabled in this config <span id="enabledCount" class="count"></span></h2>
-        <p class="hint">Uncheck an installed mod to remove it. Official DLC / mods not found in your folders can't be toggled here.</p>
-        <label class="toggle"><input type="checkbox" id="showDlc" /> Show official DLC / mods</label>
-        <div id="enabledList" class="list"></div>
-      </section>
+  <!-- ===== Config editor ===== -->
+  <section class="page" id="page-config" hidden>
+    <section class="picker">
+      <label for="configSelect">Configuration file</label>
+      <select id="configSelect"><option value="">Loading…</option></select>
+      <span id="configMeta" class="meta"></span>
+      <button id="deleteConfig" class="danger" disabled title="Delete this configuration file">Delete config…</button>
+    </section>
+    <p class="hint">Add or remove mods in an existing game configuration without recreating it.</p>
 
-      <section class="col">
-        <h2>Installed but not enabled <span id="availCount" class="count"></span></h2>
-        <input id="availFilter" class="filter" type="search" placeholder="Filter by name…" />
-        <div id="availList" class="list"></div>
-      </section>
-    </div>
-  </main>
+    <main id="editor" hidden>
+      <div class="columns">
+        <section class="col">
+          <h2>Enabled in this config <span id="enabledCount" class="count"></span></h2>
+          <p class="hint">Uncheck an installed mod to remove it. Official DLC / mods not found in your folders can't be toggled here.</p>
+          <label class="toggle"><input type="checkbox" id="showDlc" /> Show official DLC / mods</label>
+          <div id="enabledList" class="list"></div>
+        </section>
+
+        <section class="col">
+          <h2>Installed but not enabled <span id="availCount" class="count"></span></h2>
+          <input id="availFilter" class="filter" type="search" placeholder="Filter by name…" />
+          <div id="availList" class="list"></div>
+        </section>
+      </div>
+    </main>
+  </section>
+
+  <!-- ===== Mod manager ===== -->
+  <section class="page" id="page-mods" hidden>
+    <section class="panel">
+      <h2>Mod manager</h2>
+      <p class="hint">Coming next: turn mods on and off without starting the game.</p>
+    </section>
+  </section>
 
   <footer id="bar" hidden>
     <div id="pending" class="pending">No changes</div>
@@ -67,5 +124,7 @@
   <div id="toast" class="toast" hidden></div>
 
   <script src="app.js"></script>
+  <script src="dashboard.js"></script>
+  <script src="config.js"></script>
 </body>
 </html>

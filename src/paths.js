@@ -5,7 +5,7 @@
 //
 // Override precedence (highest first):
 //   1. civ6-paths.json in the project root (or CIV6_PATHS_FILE)
-//   2. env vars CIV6_LOCAL_MODS / CIV6_WORKSHOP / CIV6_SAVES
+//   2. env vars CIV6_LOCAL_MODS / CIV6_WORKSHOP / CIV6_SAVES / CIV6_MODS_DB
 //   3. guessed defaults (probed for existence)
 //
 // A "source" is { type: 'local'|'workshop', label, root, exists }.
@@ -151,4 +151,17 @@ function getSavesDir() {
   return { root: dir, exists: existsDir(dir) };
 }
 
-module.exports = { getSources, getSavesDir, myGamesRoot };
+// The game's mod database (holds which mods are enabled). Lives under
+// LocalAppData, not Documents. Note the sibling "...Civilization VII" folder has
+// its own Mods.sqlite — never pick that one.
+function getModsDb() {
+  const ov = loadOverrides();
+  const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const file = ov.modsDb || process.env.CIV6_MODS_DB ||
+    path.join(local, 'Firaxis Games', GAME_DIR, 'Mods.sqlite');
+  let exists = false;
+  try { exists = fs.statSync(file).isFile(); } catch (_) { /* missing */ }
+  return { path: file, exists };
+}
+
+module.exports = { getSources, getSavesDir, getModsDb, myGamesRoot };

@@ -1,8 +1,8 @@
 {
-  "name": "civ6-config-editor",
+  "name": "civ6-mod-toolkit",
   "version": "0.1.0",
   "private": true,
-  "description": "Add/remove mods in Civilization VI .Civ6Cfg configuration files (and saves).",
+  "description": "Civilization VI mod toolkit: edit mods in .Civ6Cfg game configurations and see which mods are enabled.",
   "type": "commonjs",
   "scripts": {
     "start": "node src/server.js",

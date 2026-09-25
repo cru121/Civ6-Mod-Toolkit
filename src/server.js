@@ -1,7 +1,7 @@
 'use strict';
 
-// Phase 3: local web server + browser UI for editing .Civ6Cfg mod lists.
-// Binds to 127.0.0.1 only. No external dependencies.
+// Civ6 Mod Toolkit: local web server + browser UI (dashboard, .Civ6Cfg editor,
+// mod manager). Binds to 127.0.0.1 only.
 //
 //   npm start            # starts on http://127.0.0.1:8673 and opens a browser
 //   PORT=1234 npm start  # custom port
@@ -16,6 +16,8 @@ const cfg = require('./civ6cfg');
 const { scanMods, normId } = require('./modinfo');
 const inventory = require('./inventory');
 const editor = require('./editor');
+const { readModState } = require('./modsdb');
+const { gameStatus } = require('./game');
 
 const PORT = parseInt(process.env.PORT, 10) || 8673;
 const HOST = '127.0.0.1';
@@ -75,6 +77,48 @@ async function handleApi(req, res, url) {
     });
   }
 
+  // GET /api/dashboard -> counts, folder setup, game status
+  if (req.method === 'GET' && url.pathname === '/api/dashboard') {
+    const sources = paths.getSources();
+    const installed = scanMods(sources);
+    const modsDb = paths.getModsDb();
+    const dbState = modsDb.exists ? readModState(modsDb.path) : { ok: false, error: 'Mod database not found.', mods: [] };
+    const byNorm = new Map(dbState.mods.map((m) => [m.idNorm, m]));
+
+    // Totals come from the folders on disk; "enabled" from the game's database.
+    const count = (type) => {
+      const mods = installed.filter((m) => m.type === type);
+      return {
+        total: mods.length,
+        enabled: mods.filter((m) => { const d = byNorm.get(m.idNorm); return d && d.disabled === false; }).length,
+      };
+    };
+    const official = dbState.mods.filter((m) => m.source === 'dlc');
+    const { configs } = listConfigs();
+    return send(res, 200, {
+      sources,
+      saves: paths.getSavesDir(),
+      modsDb: { ...modsDb, ok: dbState.ok, error: dbState.error || null, activeGroup: dbState.activeGroup || null },
+      game: await gameStatus(),
+      counts: {
+        workshop: count('workshop'),
+        local: count('local'),
+        dlc: { total: official.length, enabled: official.filter((m) => m.disabled === false).length },
+        configs: configs.length,
+      },
+      // Installed on disk but not yet in the game's database (game hasn't
+      // rescanned since they were added) - can't be toggled until it has.
+      unscanned: dbState.ok
+        ? installed.filter((m) => !byNorm.has(m.idNorm)).map((m) => ({ id: m.id, name: m.name, type: m.type }))
+        : [],
+    });
+  }
+
+  // GET /api/game -> is Civ6 running (polled by the UI)
+  if (req.method === 'GET' && url.pathname === '/api/game') {
+    return send(res, 200, await gameStatus());
+  }
+
   // GET /api/config?path=... -> enabled + available-to-add for one config
   if (req.method === 'GET' && url.pathname === '/api/config') {
     const p = url.searchParams.get('path');
@@ -94,6 +138,7 @@ async function handleApi(req, res, url) {
     if (body.localMods) obj.localMods = body.localMods;
     if (body.workshop) obj.workshop = body.workshop;
     if (body.saves) obj.saves = body.saves;
+    if (body.modsDb) obj.modsDb = body.modsDb;
     fs.writeFileSync(file, JSON.stringify(obj, null, 2));
     return send(res, 200, { ok: true, file });
   }
@@ -155,7 +200,7 @@ async function handleApi(req, res, url) {
 
 // -------- static files ------------------------------------------------------
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml' };
 
 function serveStatic(req, res, url) {
   let rel = url.pathname === '/' ? '/index.html' : url.pathname;
@@ -192,7 +237,7 @@ function openBrowser() {
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     // Already running (e.g. launcher double-clicked twice) — just reopen the tab.
-    console.log(`Civ6 Config Editor is already running at ${addr} — opening browser.`);
+    console.log(`Civ6 Mod Toolkit is already running at ${addr} — opening browser.`);
     openBrowser();
     process.exit(0);
   }
@@ -201,7 +246,7 @@ server.on('error', (err) => {
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`Civ6 Config Editor running at ${addr}`);
+  console.log(`Civ6 Mod Toolkit running at ${addr}`);
   console.log('Press Ctrl+C to stop.');
   openBrowser();
 });

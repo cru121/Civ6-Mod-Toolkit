@@ -1,5 +1,5 @@
 @echo off
-title Civ6 Config Editor
+title Civ6 Mod Toolkit
 cd /d "%~dp0"
 
 where node >nul 2>nul
@@ -26,14 +26,14 @@ if not exist "node_modules" (
 )
 
 echo.
-echo   Starting the Civ6 Config Editor...
+echo   Starting the Civ6 Mod Toolkit...
 echo   Your browser will open automatically at http://127.0.0.1:8673
 echo.
-echo   ^>^>^>  Keep this window open while you use the editor.  ^<^<^<
+echo   ^>^>^>  Keep this window open while you use the toolkit.  ^<^<^<
 echo   ^>^>^>  Close this window (or press Ctrl+C) to stop it.  ^<^<^<
 echo.
 call npm start
 
 echo.
-echo   The editor has stopped. You can close this window.
+echo   The toolkit has stopped. You can close this window.
 pause >nul

@@ -1,19 +1,21 @@
 'use strict';
 
+// App shell: shared helpers, hash router (#/dashboard, #/config, #/mods) and
+// the game-status pill. Each page script registers itself in `pages`.
+
 const $ = (id) => document.getElementById(id);
-const state = {
-  configPath: null,
-  view: null,          // { enabled:[], availableToAdd:[] }
-  addSet: new Set(),   // idNorm to add
-  removeSet: new Set(),// idNorm to remove
-  showDlc: false,      // whether to list official DLC / not-installed entries
-};
+const pages = {}; // name -> { show(params) }
+pages.mods = {};  // placeholder page until the mod manager lands
 
 async function api(path, opts) {
   const res = await fetch(path, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
+}
+
+function postJson(path, body) {
+  return api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 }
 
 function toast(msg, kind, detail) {
@@ -67,193 +69,41 @@ function renderCivText(s) {
   return out;
 }
 
-// ---- load overall state ----------------------------------------------------
+// ---- router ----------------------------------------------------------------
 
-async function loadState() {
-  const s = await api('/api/state');
-  $('pathLocal').value = (s.sources.find((x) => x.type === 'local') || {}).root || '';
-  $('pathWorkshop').value = s.sources.filter((x) => x.type === 'workshop').map((x) => x.root).join(';') || '';
-  $('pathSaves').value = s.saves.root || '';
-  const nLocal = s.installed.filter((m) => m.type === 'local').length;
-  const nWs = s.installed.filter((m) => m.type === 'workshop').length;
-  $('pathsBadge').textContent = `(${s.installed.length} mods found — ${nLocal} local, ${nWs} workshop)`;
-
-  const sel = $('configSelect');
-  if (!s.configs.length) {
-    sel.innerHTML = '<option value="">No .Civ6Cfg files found in saves folder</option>';
-    $('configMeta').textContent = s.savesExists ? '' : 'Saves folder not found — set it above.';
-  } else {
-    sel.innerHTML = '<option value="">Choose a config…</option>' +
-      s.configs.map((c) => `<option value="${esc(c.path)}">${esc(c.name)}${c.mods != null ? ` — ${c.mods} mods` : ''}</option>`).join('');
-  }
-  // keep current selection if still present
-  if (state.configPath && [...sel.options].some((o) => o.value === state.configPath)) {
-    sel.value = state.configPath;
-  }
+function parseRoute() {
+  const h = location.hash.replace(/^#\/?/, '');
+  const [name, query] = h.split('?');
+  return { name: pages[name] ? name : 'dashboard', params: new URLSearchParams(query || '') };
 }
 
-// ---- load one config -------------------------------------------------------
-
-async function loadConfig(p) {
-  state.configPath = p;
-  state.addSet.clear();
-  state.removeSet.clear();
-  if (!p) {
-    $('editor').hidden = true; $('bar').hidden = true;
-    $('deleteConfig').disabled = true;
-    return;
-  }
-  const v = await api('/api/config?path=' + encodeURIComponent(p));
-  state.view = v;
-  render();
-  $('editor').hidden = false; $('bar').hidden = false;
-  $('deleteConfig').disabled = false;
+function route() {
+  const { name, params } = parseRoute();
+  document.body.dataset.page = name;
+  for (const el of document.querySelectorAll('.page')) el.hidden = el.id !== `page-${name}`;
+  for (const a of document.querySelectorAll('[data-nav]')) a.classList.toggle('active', a.dataset.nav === name);
+  Promise.resolve(pages[name].show && pages[name].show(params)).catch((err) => toast(err.message, 'err'));
 }
 
-function render() {
-  const v = state.view;
-  const enabled = v.enabled;
-  const avail = v.availableToAdd;
+// ---- game status -----------------------------------------------------------
 
-  // Enabled column (optionally hide official DLC / not-installed entries)
-  const enabledShown = state.showDlc ? enabled : enabled.filter((m) => m.installed);
-  const hidden = enabled.length - enabledShown.length;
-  $('enabledCount').textContent = hidden ? `(${enabledShown.length} of ${enabled.length}, ${hidden} DLC hidden)` : `(${enabled.length})`;
-  $('enabledList').innerHTML = enabledShown.map((m) => {
-    const removable = m.installed;
-    const pendingRemove = state.removeSet.has(m.idNorm);
-    const cls = pendingRemove ? 'row pending-remove' : (removable ? 'row' : 'row readonly');
-    const tag = m.installed ? m.type : 'dlc';
-    const tagLabel = m.installed ? m.type : 'DLC / not installed';
-    return `<label class="${cls}">
-      <input type="checkbox" data-remove="${esc(m.idNorm)}" ${removable ? '' : 'disabled'} ${pendingRemove ? '' : 'checked'} />
-      <span class="name"><b>${renderCivText(m.name || m.title || m.id)}</b><small>${esc(m.id)}</small></span>
-      <span class="tag ${tag}">${esc(tagLabel)}</span>
-    </label>`;
-  }).join('') || '<p class="hint">No mods to show.</p>';
+const game = { running: false, known: false };
 
-  // Available column
-  const filter = $('availFilter').value.toLowerCase();
-  const shown = avail.filter((m) => !filter || m.name.toLowerCase().includes(filter) || m.idNorm.includes(filter));
-  $('availCount').textContent = `(${avail.length})`;
-  $('availList').innerHTML = shown.map((m) => {
-    const pendingAdd = state.addSet.has(m.idNorm);
-    return `<label class="row ${pendingAdd ? 'pending-add' : ''}">
-      <input type="checkbox" data-add="${esc(m.idNorm)}" ${pendingAdd ? 'checked' : ''} />
-      <span class="name"><b>${renderCivText(m.name)}</b><small>${esc(m.id)}</small></span>
-      <span class="tag ${esc(m.type)}">${esc(m.type)}</span>
-    </label>`;
-  }).join('') || '<p class="hint">Nothing to add — every installed mod is already enabled.</p>';
-
-  updateBar();
+function setGameStatus(g) {
+  Object.assign(game, g);
+  const pill = $('gamePill');
+  if (!g.known) { pill.className = 'pill'; pill.textContent = 'Game status unknown'; return; }
+  pill.className = 'pill ' + (g.running ? 'bad' : 'good');
+  pill.textContent = g.running ? 'Civ6 is running' : 'Civ6 is closed';
 }
 
-function updateBar() {
-  const a = state.addSet.size, r = state.removeSet.size;
-  $('pending').innerHTML = (a || r)
-    ? `Pending: <b class="add">+${a}</b> to add, <b class="remove">−${r}</b> to remove`
-    : 'No changes';
-  $('saveOverwrite').disabled = !(a || r);
-  $('saveNew').disabled = !(a || r);
+async function pollGame() {
+  try { setGameStatus(await api('/api/game')); } catch (_) { /* server gone; keep last */ }
 }
 
-// ---- events ----------------------------------------------------------------
-
-$('configSelect').addEventListener('change', (e) => loadConfig(e.target.value).catch((err) => toast(err.message, 'err')));
-$('availFilter').addEventListener('input', render);
-$('showDlc').addEventListener('change', (e) => { state.showDlc = e.target.checked; if (state.view) render(); });
-
-document.addEventListener('change', (e) => {
-  const el = e.target;
-  if (el.dataset && el.dataset.add !== undefined) {
-    const k = el.dataset.add;
-    if (el.checked) state.addSet.add(k); else state.addSet.delete(k);
-    // toggle row style without full re-render (keeps filter/scroll)
-    el.closest('.row').classList.toggle('pending-add', el.checked);
-    updateBar();
-  } else if (el.dataset && el.dataset.remove !== undefined) {
-    const k = el.dataset.remove;
-    if (!el.checked) state.removeSet.add(k); else state.removeSet.delete(k);
-    el.closest('.row').classList.toggle('pending-remove', !el.checked);
-    updateBar();
-  }
+window.addEventListener('hashchange', route);
+window.addEventListener('DOMContentLoaded', () => {
+  route();
+  pollGame();
+  setInterval(pollGame, 10000);
 });
-
-$('savePaths').addEventListener('click', async () => {
-  try {
-    const workshop = $('pathWorkshop').value.split(';').map((s) => s.trim()).filter(Boolean);
-    await api('/api/paths', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        localMods: $('pathLocal').value.trim() || undefined,
-        workshop: workshop.length ? workshop : undefined,
-        saves: $('pathSaves').value.trim() || undefined,
-      }),
-    });
-    $('pathsMsg').textContent = 'Saved. Rescanning…';
-    await loadState();
-    if (state.configPath) await loadConfig(state.configPath);
-    $('pathsMsg').textContent = 'Saved.';
-  } catch (err) { toast(err.message, 'err'); }
-});
-
-$('rescan').addEventListener('click', async () => {
-  try { await loadState(); if (state.configPath) await loadConfig(state.configPath); toast('Rescanned.', 'ok'); }
-  catch (err) { toast(err.message, 'err'); }
-});
-
-async function doSave(mode) {
-  const payload = {
-    path: state.configPath,
-    add: [...state.addSet],
-    remove: [...state.removeSet],
-    mode,
-  };
-  if (mode === 'new') {
-    const cur = state.view.name.replace(/\.Civ6Cfg$/i, '');
-    const name = prompt('Save as new file name:', `${cur} (edited)`);
-    if (!name) return;
-    payload.newName = name;
-  }
-  try {
-    const { summary } = await api('/api/save', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const detail = [
-      `mods ${summary.modsBefore} → ${summary.modsAfter}`,
-      summary.backupPath ? `backup: ${summary.backupPath}` : null,
-      `saved: ${summary.outPath}`,
-    ].filter(Boolean).join('  ·  ');
-    toast(mode === 'new' ? 'Saved new config.' : 'Saved (backup created).', 'ok', detail);
-    await loadState();
-    // reload the file we actually wrote so the view reflects reality
-    await loadConfig(mode === 'new' ? summary.outPath : state.configPath);
-    $('configSelect').value = state.configPath;
-  } catch (err) {
-    toast(err.message + (err.problems ? '' : ''), 'err');
-  }
-}
-
-$('saveOverwrite').addEventListener('click', () => doSave('overwrite'));
-$('saveNew').addEventListener('click', () => doSave('new'));
-
-$('deleteConfig').addEventListener('click', async () => {
-  if (!state.configPath) return;
-  const name = state.view ? state.view.name : state.configPath;
-  if (!confirm(`Delete "${name}"?\n\nA timestamped backup is kept so it can be restored.`)) return;
-  try {
-    const r = await api('/api/delete', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ path: state.configPath }),
-    });
-    toast('Configuration deleted.', 'ok', r.backupPath ? `backup: ${r.backupPath}` : '');
-    state.configPath = null;
-    await loadState();
-    $('configSelect').value = '';
-    await loadConfig('');
-  } catch (err) { toast(err.message, 'err'); }
-});
-
-// ---- init ------------------------------------------------------------------
-loadState().catch((err) => toast(err.message, 'err'));
