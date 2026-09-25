@@ -36,13 +36,15 @@
     <label for="configSelect">Configuration file</label>
     <select id="configSelect"><option value="">Loading…</option></select>
     <span id="configMeta" class="meta"></span>
+    <button id="deleteConfig" class="danger" disabled title="Delete this configuration file">Delete config…</button>
   </section>
 
   <main id="editor" hidden>
     <div class="columns">
       <section class="col">
         <h2>Enabled in this config <span id="enabledCount" class="count"></span></h2>
-        <p class="hint">Uncheck an installed mod to remove it. Official DLC / mods not found in your folders are shown for reference and can't be toggled here.</p>
+        <p class="hint">Uncheck an installed mod to remove it. Official DLC / mods not found in your folders can't be toggled here.</p>
+        <label class="toggle"><input type="checkbox" id="showDlc" /> Show official DLC / mods</label>
         <div id="enabledList" class="list"></div>
       </section>
 

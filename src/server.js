@@ -136,6 +136,20 @@ async function handleApi(req, res, url) {
     }
   }
 
+  // POST /api/delete -> back up then delete a config file
+  if (req.method === 'POST' && url.pathname === '/api/delete') {
+    const body = await readBody(req);
+    const p = body.path;
+    if (!isConfigPath(p) || !fs.existsSync(p)) return send(res, 400, { error: 'invalid config path' });
+    try {
+      const backupPath = editor.backupFile(p); // recoverable delete
+      fs.unlinkSync(p);
+      return send(res, 200, { ok: true, backupPath });
+    } catch (e) {
+      return send(res, 500, { error: e.message });
+    }
+  }
+
   return send(res, 404, { error: 'not found' });
 }
 

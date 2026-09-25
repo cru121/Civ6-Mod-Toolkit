@@ -34,13 +34,15 @@ already running just reopens the browser tab.
    **Save paths**.
 2. Pick a **Configuration file** from the dropdown.
 3. **Left column** — mods currently enabled. Uncheck an installed mod to remove
-   it. (Official DLC and mods not found in your folders are shown greyed for
-   reference.)
+   it. Official DLC and mods not found in your folders are hidden by default;
+   tick **Show official DLC / mods** to see them (they're read-only).
 4. **Right column** — mods you have installed but haven't enabled. Check the ones
    you want to add.
 5. **Save (overwrite + backup)** writes the changes back to the same file after
    copying the original to a timestamped `.bak-…`. **Save as new file…** writes a
    fresh config and leaves the original untouched.
+6. **Delete config…** removes the selected configuration file (a timestamped
+   backup is kept, so it can be restored).
 
 Then load the configuration in-game (Single Player → Create Game → load
 configuration).
@@ -60,14 +62,3 @@ in `public/`. The format engine is `src/civ6cfg.js`; mod discovery is
 `src/modinfo.js` + `src/paths.js`; the safe-save logic is `src/editor.js`. There
 is also a CLI, `src/edit-config.js` (`npm run edit -- --help`-style flags), which
 the server reuses. See `FINDINGS.md` for the reverse-engineered file format.
-
-## Credits & license
-
-MIT licensed (see `LICENSE`). The low-level file-format reader
-(`src/civ6-save-parser.js`) is vendored from
-[pydt/civ6-save-parser](https://github.com/pydt/civ6-save-parser) (MIT, Mike
-Rosack); the config-specific navigation, editing, inventory, UI, and launcher
-are original to this project.
-
-Not affiliated with or endorsed by Firaxis Games or 2K. "Civilization" is a
-trademark of its respective owner.

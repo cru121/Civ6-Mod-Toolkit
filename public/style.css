@@ -95,7 +95,15 @@ button {
   padding: 9px 16px; font: inherit; font-weight: 600; cursor: pointer;
 }
 button.secondary { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); }
+button.danger { background: transparent; color: var(--remove); border: 1px solid var(--border); }
+button.danger:not(:disabled):hover { background: var(--remove); color: #fff; border-color: var(--remove); }
 button:disabled { opacity: .45; cursor: default; }
+
+.toggle {
+  display: inline-flex; align-items: center; gap: 7px;
+  margin: 0 0 10px; font-size: 13px; color: var(--muted); cursor: pointer; user-select: none;
+}
+.toggle input { width: 15px; height: 15px; accent-color: var(--accent); }
 
 .toast {
   position: fixed; bottom: 78px; left: 50%; transform: translateX(-50%);
