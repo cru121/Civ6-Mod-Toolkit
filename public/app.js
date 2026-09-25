@@ -102,7 +102,13 @@ function setGameStatus(g) {
 }
 
 async function pollGame() {
-  try { setGameStatus(await api('/api/game')); } catch (_) { /* server gone; keep last */ }
+  try {
+    setGameStatus(await api('/api/game'));
+  } catch (_) {
+    // The toolkit itself isn't answering (stopped or restarting).
+    $('gamePill').className = 'pill bad';
+    $('gamePill').textContent = 'Toolkit not running';
+  }
 }
 
 window.addEventListener('hashchange', route);

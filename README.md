@@ -21,8 +21,15 @@ You need [Node.js](https://nodejs.org) installed once (any recent version).
 
 Then just **double-click `Civ6 Mod Toolkit.cmd`** in this folder. The first
 run installs what it needs (one-time), then your browser opens to the toolkit
-automatically. A small window stays open while the toolkit runs — **close that
-window to stop it**.
+automatically. A small window stays open while the toolkit runs, with a menu —
+just press a key:
+
+- **O** — open the toolkit in your browser (e.g. if you closed the tab)
+- **R** — restart the toolkit
+- **S** — stop it and close the window
+
+Closing the window also stops the toolkit. (The launcher uses `curl`, which is
+built into Windows 10 and newer.)
 
 Reading which mods are enabled needs Node.js **22.5 or newer**; with an older
 version everything else still works.
@@ -38,8 +45,9 @@ npm install
 npm start
 ```
 
-Both open `http://127.0.0.1:8673`. Double-clicking the launcher again while it's
-already running just reopens the browser tab.
+Both open `http://127.0.0.1:8673` (from a terminal, stop it with Ctrl+C).
+Double-clicking the launcher again while it's already running just reopens the
+browser tab.
 
 ## Using it
 
@@ -109,6 +117,8 @@ configuration).
   every mod block, counts consistent, header intact); a failed check aborts the
   write.
 - Only the mod-list region of the file is ever modified.
+- The toolkit only listens on `127.0.0.1`, and its API only accepts requests
+  from its own page (other websites open in your browser can't talk to it).
 - The mod manager only writes to the game's mod database while Civ6 is closed,
   copies it to a timestamped `Mods.sqlite.bak-…` first (the newest 10 are kept),
   changes only the enabled/disabled flags, and checks the result — if anything

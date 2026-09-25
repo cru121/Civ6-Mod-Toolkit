@@ -311,6 +311,14 @@ async function handleApi(req, res, url) {
     }
   }
 
+  // POST /api/shutdown -> stop the server (used by the launcher's menu)
+  if (req.method === 'POST' && url.pathname === '/api/shutdown') {
+    send(res, 200, { ok: true });
+    console.log('Civ6 Mod Toolkit stopped.');
+    setTimeout(() => process.exit(0), 100); // let the response go out first
+    return;
+  }
+
   return send(res, 404, { error: 'not found' });
 }
 
@@ -331,9 +339,23 @@ function serveStatic(req, res, url) {
 
 // -------- server ------------------------------------------------------------
 
+// The API changes files on disk, so only our own page (and local tools such as
+// the launcher, which send no Origin) may call it. Checking Host blocks DNS
+// rebinding; requiring a JSON content type on POST forces a CORS preflight for
+// any cross-site request, which we never answer; checking Origin covers the rest.
+const OWN_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+function apiAllowed(req) {
+  if (!OWN_HOSTS.has(String(req.headers.host || '').toLowerCase())) return false;
+  const origin = req.headers.origin;
+  if (origin && !OWN_HOSTS.has(origin.replace(/^https?:\/\//i, '').toLowerCase())) return false;
+  if (req.method === 'POST' && !/^application\/json\b/i.test(req.headers['content-type'] || '')) return false;
+  return true;
+}
+
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${HOST}:${PORT}`);
   try {
+    if (url.pathname.startsWith('/api/') && !apiAllowed(req)) return send(res, 403, { error: 'forbidden' });
     if (url.pathname.startsWith('/api/')) await handleApi(req, res, url);
     else serveStatic(req, res, url);
   } catch (e) {
@@ -363,6 +385,6 @@ server.on('error', (err) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`Civ6 Mod Toolkit running at ${addr}`);
-  console.log('Press Ctrl+C to stop.');
+  if (!process.env.CIV6_LAUNCHER) console.log('Press Ctrl+C to stop.'); // the launcher has its own menu
   openBrowser();
 });
