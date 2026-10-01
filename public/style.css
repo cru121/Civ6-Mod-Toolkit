@@ -136,7 +136,7 @@ select {
 .row.pending-add { background: rgba(63,185,80,.10); border-color: rgba(63,185,80,.4); }
 .row.pending-remove { background: rgba(248,81,73,.10); border-color: rgba(248,81,73,.4); }
 
-body:not([data-page=config]) #bar, body:not([data-page=mods]) #modsBar, .actionbar[hidden] { display: none; }
+body:not([data-page=config]) #bar, body:not([data-page=mods]) #modsBar, body:not([data-page=saves]) #saveBar, .actionbar[hidden] { display: none; }
 .actionbar {
   position: fixed; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -268,3 +268,9 @@ button.small { padding: 5px 10px; font-size: 12.5px; }
 
 .credits { margin: 26px 0 0; text-align: center; font-size: 12.5px; color: var(--muted); line-height: 1.7; }
 .credits a { color: var(--accent); }
+
+/* Save editor */
+.tag.ui { color: #3fb950; border-color: rgba(63,185,80,.45); }
+.tag.gameplay { color: #d29922; border-color: rgba(210,153,34,.45); }
+.tag.unknown { color: var(--muted); }
+.tag.official { color: var(--muted); }

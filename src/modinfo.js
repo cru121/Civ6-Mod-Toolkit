@@ -36,7 +36,10 @@ function parseModinfo(file) {
   // human-readable) .modinfo filename in that case.
   const fileName = path.basename(file, path.extname(file));
   const name = (!rawName || /^LOC_[A-Z0-9_]+$/i.test(rawName)) ? fileName : rawName;
-  return { id: idMatch[1], name, rawName: rawName || null };
+  // AffectsSavedGames=0 marks UI/map-script style mods whose content is not part
+  // of a save's game state (null when the tag is absent, which the game treats as 1).
+  const asg = text.match(/<AffectsSavedGames>\s*(\d)/i);
+  return { id: idMatch[1], name, rawName: rawName || null, affectsSavedGames: asg ? asg[1] !== '0' : null };
 }
 
 // Recursively find .modinfo files, but only a couple levels deep (local mods:
@@ -81,6 +84,7 @@ function scanMods(sources) {
         type: src.type,
         folder,
         path: file,
+        affectsSavedGames: info.affectsSavedGames,
       };
       if (src.type === 'workshop') entry.workshopId = rel;
       // De-dupe by normalized id (a mod installed twice keeps the first found).

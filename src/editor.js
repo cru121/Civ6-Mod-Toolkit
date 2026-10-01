@@ -140,4 +140,4 @@ function saveConfig(configPath, opts = {}) {
   return summary;
 }
 
-module.exports = { buildTitle, backupFile, applyEdits, validate, saveConfig };
+module.exports = { buildTitle, backupFile, atomicWrite, applyEdits, validate, saveConfig };

@@ -13,6 +13,7 @@
       <a href="#/dashboard" data-nav="dashboard">Dashboard</a>
       <a href="#/config" data-nav="config">Config editor</a>
       <a href="#/mods" data-nav="mods">Mod manager</a>
+      <a href="#/saves" data-nav="saves">Save editor</a>
     </nav>
     <span id="gamePill" class="pill" title="Whether Civilization VI is running">Checking game…</span>
   </header>
@@ -172,6 +173,27 @@
     </dialog>
   </section>
 
+  <!-- ===== Save editor ===== -->
+  <section class="page" id="page-saves" hidden>
+    <section class="picker">
+      <label for="saveSelect">Saved game</label>
+      <select id="saveSelect"><option value="">Loading…</option></select>
+      <span id="saveMeta" class="meta"></span>
+    </section>
+    <p class="hint">Remove mods from a saved game so it no longer asks for them. Your original is never changed unless you choose to overwrite it (a backup is kept).</p>
+
+    <main id="saveEditor" hidden>
+      <section class="panel">
+        <div class="panel-head">
+          <h2>Mods in this save <span id="saveCount" class="count"></span></h2>
+        </div>
+        <div id="saveLegend" class="hint"></div>
+        <label class="toggle"><input type="checkbox" id="showOfficial" /> Show official DLC / expansions</label>
+        <div id="saveList" class="list tall"></div>
+      </section>
+    </main>
+  </section>
+
   <footer id="modsBar" class="actionbar">
     <div id="modsPending" class="pending">No changes</div>
     <div class="bar-actions">
@@ -188,11 +210,20 @@
     </div>
   </footer>
 
+  <footer id="saveBar" class="actionbar" hidden>
+    <div id="savePending" class="pending">No changes</div>
+    <div class="bar-actions">
+      <button id="saveAsNew" disabled>Save as new file…</button>
+      <button id="saveOver" class="secondary" disabled>Overwrite (backup kept)</button>
+    </div>
+  </footer>
+
   <div id="toast" class="toast" hidden></div>
 
   <script src="app.js"></script>
   <script src="dashboard.js"></script>
   <script src="config.js"></script>
   <script src="mods.js"></script>
+  <script src="saves.js"></script>
 </body>
 </html>
