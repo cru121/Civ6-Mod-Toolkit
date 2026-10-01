@@ -78,9 +78,9 @@
   <section class="hero">
     <h1>Manage your Civ VI mods without starting the game</h1>
     <p class="lede">A small Windows tool for Sid Meier's Civilization VI. It opens in your browser. You can turn mods and DLC on and off, and add or remove mods in a saved game configuration without setting it up again.</p>
-    <a class="download" id="download" href="https://github.com/cru121/Civ6-Mod-Toolkit/releases/download/v1.0.0/Civ6-Mod-Toolkit-v1.0.0.zip">
+    <a class="download" id="download" href="https://github.com/cru121/Civ6-Mod-Toolkit/releases/download/v1.1.0/Civ6-Mod-Toolkit-v1.1.0.zip">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
-      <span id="download-label">Download v1.0.0</span>
+      <span id="download-label">Download v1.1.0</span>
     </a>
     <div class="meta"><span id="download-meta">Windows 10 or 11 · needs Node.js 22.5+</span> · <a href="https://github.com/cru121/Civ6-Mod-Toolkit/releases">All releases</a></div>
   </section>
@@ -89,6 +89,7 @@
     <div class="card"><h3>Dashboard</h3><p>Shows your Workshop and local mods, saved configurations, official DLC, whether the game is running, and which folders the toolkit uses.</p></div>
     <div class="card"><h3>Mod manager</h3><p>Turn mods and DLC on or off, with warnings about missing dependencies and conflicts. Useful when a broken mod stops the game from starting.</p></div>
     <div class="card"><h3>Config editor</h3><p>Add or remove mods in an existing <code>.Civ6Cfg</code>. Your other game settings stay as they are.</p></div>
+    <div class="card"><h3>Save editor <small>(experimental)</small></h3><p>Remove mods from a saved game so it no longer asks for them. Handy when a save won't load because a mod is missing.</p></div>
   </div>
 
   <h2 id="install">Install and run</h2>
@@ -124,6 +125,14 @@ npm start</code></pre>
     <li>Untick mods on the left to remove them, and tick installed mods on the right to add them.</li>
     <li>Choose <strong>Save (overwrite + backup)</strong> or <strong>Save as new file…</strong>.</li>
     <li>In the game, go to Single Player → Create Game and load the configuration.</li>
+  </ol>
+
+  <h3>Save editor <small>(experimental)</small></h3>
+  <ol>
+    <li>Pick a saved game. Autosaves are listed too.</li>
+    <li>Untick the mods you want to remove. UI-only mods are safe to drop. Removing a mod that changes gameplay may stop the save from loading, so the toolkit asks you to confirm.</li>
+    <li>Choose <strong>Save as new file…</strong> (your original stays untouched) or <strong>Overwrite</strong>, which keeps a backup.</li>
+    <li>Official DLC and expansions can't be removed.</li>
   </ol>
 
   <h2 id="safety">Safety</h2>
