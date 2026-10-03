@@ -9,7 +9,8 @@
     "phase0": "node src/phase0-roundtrip.js",
     "phase1": "node src/phase1-inventory.js",
     "phase2": "node src/phase2-save.js",
-    "edit": "node src/edit-config.js"
+    "edit": "node src/edit-config.js",
+    "mods": "node src/mods-cli.js"
   },
   "author": "cru121 (with Claude, Anthropic)",
   "repository": "github:cru121/Civ6-Mod-Toolkit",
