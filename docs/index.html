@@ -69,6 +69,7 @@
   <nav>
     <a href="#install">Install</a>
     <a href="#usage">Usage</a>
+    <a href="#cli">Command line</a>
     <a href="#safety">Safety</a>
     <a href="https://github.com/cru121/Civ6-Mod-Toolkit">GitHub</a>
   </nav>
@@ -134,6 +135,19 @@ npm start</code></pre>
     <li>Choose <strong>Save as new file…</strong> (your original stays untouched) or <strong>Overwrite</strong>, which keeps a backup.</li>
     <li>Official DLC and expansions can't be removed.</li>
   </ol>
+
+  <h2 id="cli">Command line and AI assistants</h2>
+  <p>The mod manager is also available as a command that prints JSON, so scripts and AI assistants such as Claude can check and toggle mods without the browser. It is in the source repository and in releases after v1.1.0.</p>
+  <pre><code>node src/mods-cli.js status
+node src/mods-cli.js list --enabled --search "city"
+node src/mods-cli.js disable "Some Mod" --dry-run
+node src/mods-cli.js disable "Some Mod"</code></pre>
+  <ul>
+    <li>A mod can be named by its id, its exact name, or a unique part of its name. If the name is ambiguous, the command lists the candidates.</li>
+    <li><code>list</code> shows each mod's dependencies and conflicts. <code>enable</code> and <code>disable</code> print warnings, for example when an enabled mod needs the one you are turning off, or when more than one enabled mod ships a replacement <code>GameCore</code> DLL.</li>
+    <li>It follows the same safety rules as the mod manager: it refuses to write while Civ6 is running, and it backs up <code>Mods.sqlite</code> first.</li>
+    <li>To let Claude do it for you, point it at the toolkit folder. The <code>CLAUDE.md</code> file there explains the commands, so it doesn't need to read the code.</li>
+  </ul>
 
   <h2 id="safety">Safety</h2>
   <ul>
