@@ -14,8 +14,11 @@
       <a href="#/config" data-nav="config">Config editor</a>
       <a href="#/mods" data-nav="mods">Mod manager</a>
       <a href="#/saves" data-nav="saves">Save editor</a>
+      <a href="#/load-order" data-nav="load-order">Load order</a>
+      <a href="#/conflicts" data-nav="conflicts">Conflicts</a>
     </nav>
     <span id="gamePill" class="pill" title="Whether Civilization VI is running">Checking game…</span>
+    <button id="gsBanner" class="pill bad" type="button" hidden title="Some verdicts assume game setup you asserted — click to review or withdraw it">Assuming game setup</button>
   </header>
 
   <!-- ===== Dashboard ===== -->
@@ -49,7 +52,8 @@
       <div class="panel-head">
         <h2>Folder setup</h2>
         <div class="panel-actions">
-          <button id="rescan" class="secondary">Rescan</button>
+          <!-- Writes to the game's mod database, so it says so. -->
+          <button id="rescan" class="secondary" title="Look at the mod folders again, and add any mod the game hasn't got yet. New mods are switched off — you tick them in the mod manager.">Rescan &amp; add new mods</button>
           <button id="editPaths" class="secondary">Edit paths</button>
         </div>
       </div>
@@ -66,6 +70,12 @@
         <label>Configurations folder (.Civ6Cfg files)
           <input id="pathSaves" type="text" spellcheck="false" />
         </label>
+        <label>Game logs folder (Database.log, Modding.log)
+          <input id="pathLogs" type="text" spellcheck="false" />
+        </label>
+        <label>Game cache folder (DebugGameplay.sqlite)
+          <input id="pathCache" type="text" spellcheck="false" />
+        </label>
         <label>Mod database (Mods.sqlite)
           <input id="pathModsDb" type="text" spellcheck="false" />
         </label>
@@ -78,8 +88,8 @@
     </section>
 
     <footer class="credits">
-      <b>Civ6 Mod Toolkit<span id="appVersion"></span></b> · Made by <a href="https://github.com/cru121" target="_blank" rel="noopener">cru121</a>
-      (Steam: evzenhouzvicka) together with Claude, Anthropic's AI assistant.
+      <b>Civ6 Mod Toolkit<span id="appVersion"></span></b> · Originally by <a href="https://github.com/cru121" target="_blank" rel="noopener">cru121</a>
+      (Steam: evzenhouzvicka), with contributions from <a href="https://github.com/Klear2012" target="_blank" rel="noopener">Klear2012</a>.
       Questions, bugs or ideas?
       <a href="https://github.com/cru121/Civ6-Mod-Toolkit/issues" target="_blank" rel="noopener">Open an issue on GitHub</a>.
       <br />Not affiliated with or endorsed by Firaxis Games or 2K.
@@ -117,6 +127,45 @@
   <!-- ===== Mod manager ===== -->
   <section class="page" id="page-mods" hidden>
     <div id="modsAlerts"></div>
+
+    <div class="profilebar" id="profileBar" hidden>
+      <label class="profile-label" for="profileSelect">Profile</label>
+      <select id="profileSelect"></select>
+      <span id="profileMeta" class="meta"></span>
+      <div class="profile-actions">
+        <button id="profileExport" type="button" class="secondary">Export</button>
+        <button id="profileImport" type="button" class="secondary">Import…</button>
+        <button id="profileManage" type="button" class="secondary">Manage…</button>
+        <input id="profileFile" type="file" accept="application/json,.json" hidden />
+      </div>
+    </div>
+
+    <div class="filterbar" id="filterBar">
+      <div class="filter-half">
+        <span class="filter-caption">Sorting</span>
+        <!-- One labelled select, not a row of buttons: a single control does not
+             look lost in half a row, and the active key stays readable without
+             opening anything. -->
+        <select id="sortSelect" class="sort-select" title="How to order the mod list"></select>
+      </div>
+      <div class="filter-half">
+        <span class="filter-caption">Label filters</span>
+        <div class="dropdown" id="labelFilter">
+          <button type="button" class="drop-trigger" id="labelFilterBtn" aria-haspopup="true" aria-expanded="false">
+            <span id="labelFilterText">All labels</span>
+            <span class="caret" aria-hidden="true">&#9662;</span>
+          </button>
+          <div class="drop-menu" id="labelFilterMenu" hidden>
+            <div class="drop-list" id="labelFilterList"></div>
+            <div class="drop-foot">
+              <span class="meta" id="labelFilterMeta"></span>
+              <button type="button" class="secondary small" id="labelFilterClear">Clear</button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="secondary" id="labelManage">Manage&hellip;</button>
+      </div>
+    </div>
 
     <div class="toolbar">
       <div class="seg" id="srcFilter">
@@ -167,9 +216,24 @@
       </div>
     </section>
 
+    <dialog id="profileDialog" class="dialog">
+      <button type="button" class="dialog-close" id="profileDialogClose" title="Close">×</button>
+      <div id="profileDialogBody"></div>
+    </dialog>
+
     <dialog id="modDialog" class="dialog">
       <button type="button" class="dialog-close" id="modDialogClose" title="Close">×</button>
       <div id="modDialogBody"></div>
+    </dialog>
+
+    <dialog id="labelDialog" class="dialog">
+      <button type="button" class="dialog-close" id="labelDialogClose" title="Close">×</button>
+      <div id="labelDialogBody"></div>
+    </dialog>
+
+    <dialog id="labelManageDialog" class="dialog">
+      <button type="button" class="dialog-close" id="labelManageClose" title="Close">×</button>
+      <div id="labelManageBody"></div>
     </dialog>
   </section>
 
@@ -210,6 +274,207 @@
     </div>
   </footer>
 
+  <!-- ===== Load order (read-only) ===== -->
+  <section class="page" id="page-load-order" hidden>
+    <div id="loAlerts"></div>
+
+    <div class="profilebar">
+      <label class="profile-label" for="loProfile">Profile</label>
+      <select id="loProfile"></select>
+      <span id="loSummary" class="meta"></span>
+      <div class="profile-actions">
+        <button id="loCompare" type="button" class="secondary" hidden>Clear comparison</button>
+        <button id="loManage" type="button" class="secondary">Manage overrides&hellip;</button>
+      </div>
+    </div>
+
+    <div class="toolbar">
+      <input id="loFilter" class="filter" type="search" placeholder="Type a mod&rsquo;s full name&hellip;" title="Show only the mod with exactly this full name — type the whole name" />
+      <select id="loTypeFilter" class="filter" hidden title="Show only one kind of thing, for example Buildings or Units"></select>
+      <div class="seg" id="loJump">
+        <button type="button" data-lomode="mod" id="loModeMod" aria-pressed="true" title="Search by mod — show only the mod whose full name you type">By mod</button>
+        <button type="button" data-lomode="action" id="loModeAction" aria-pressed="false" title="Search by kind — show only one kind of thing, like Buildings">By kind</button>
+        <button type="button" data-jump="nextoff" aria-pressed="false" id="loOnlyOff"
+          title="Show only the things that will never run in the game. Press again to show everything.">Only things that will never run</button>
+      </div>
+      <span class="meta" id="loShown"></span>
+    </div>
+
+    <section class="panel" id="gsPanel">
+      <div class="panel-head">
+        <h2>Game setup you play with <span id="gsCount" class="count"></span></h2>
+        <div class="panel-actions">
+          <button id="gsClear" type="button" class="secondary" title="Withdraw every asserted option — all verdicts go back to measured-only">Withdraw all</button>
+        </div>
+      </div>
+      <p class="hint">Assert the rulesets, game modes and settings your games use. Matching actions stop saying they require it, and every verdict decided this way is marked assumed — never measured. This changes verdicts only; the game is never touched.</p>
+      <div id="gsError"></div>
+      <div id="gsGroups"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Load order <span id="loCount" class="count"></span></h2>
+      </div>
+      <!-- One list. Bands are value rows, free-range rows, and action rows, in
+           the order the game will use. The explanatory note is here rather than
+           in a dialog because the thing being explained is the shape of the
+           list itself. -->
+      <div id="loNote" class="note"></div>
+      <div class="list tall" id="loList"></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>No declared position <span id="loUndeclaredCount" class="count"></span></h2>
+      </div>
+      <div class="panel-body">
+        <p class="note" id="loUndeclaredNote"></p>
+        <div class="list" id="loUndeclared"></div>
+      </div>
+    </section>
+
+    <section class="panel" id="loUnmatchedPanel" hidden>
+      <div class="panel-head">
+        <h2>Overrides that no longer match <span id="loUnmatchedCount" class="count"></span></h2>
+        <div class="panel-actions">
+          <button id="loUnmatchedManage" class="secondary">Manage&hellip;</button>
+        </div>
+      </div>
+      <div class="list" id="loUnmatched"></div>
+    </section>
+  </section>
+
+  <!-- ===== Load order overrides (problem 2 - a separate screen) ===== -->
+  <section class="page" id="page-load-overrides" hidden>
+    <div id="lovAlerts"></div>
+    <div class="alert warn"><b>Global edit.</b> Moving a mod&rsquo;s block changes its LoadOrder in every profile. The profile picker below only filters what you see &mdash; switching it writes nothing.</div>
+
+    <div class="toolbar">
+      <label class="profile-label" for="lovProfile">Profile</label>
+      <select id="lovProfile" title="Subset filter only — switching profile writes nothing"></select>
+      <span class="meta" id="lovProfileMeta"></span>
+      <span class="meta" id="lovMeta"></span>
+      <div class="profile-actions">
+        <button id="lovSync" type="button" class="secondary">Re-apply all</button>
+      </div>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Move a mod&rsquo;s block <span id="lovEditCount" class="count"></span></h2>
+      </div>
+      <div class="panel-body">
+        <p class="note">Mods start collapsed: each row shows positioned actions, min, max, width, ties, undeclared (never moved), and protection. Expanding a mod selects it for the move. Undeclared actions get no value unless you name one explicitly in manual mode.</p>
+        <input id="lovModFilter" class="filter" type="search" placeholder="Type a mod&rsquo;s name to narrow the list&hellip;" title="Narrow the list below — type part of a name" />
+        <div id="lovPicker" class="list tall"></div>
+        <h3>Where to put it</h3>
+        <div class="toolbar">
+          <select id="lovTargetMode" title="Where to put the moved block — next to a number, next to another mod, or into an empty gap">
+            <option value="after-value">After a number</option>
+            <option value="before-value">Before a number</option>
+            <option value="after-mod">After another mod&rsquo;s block</option>
+            <option value="before-mod">Before another mod&rsquo;s block</option>
+            <option value="free">Into an empty gap</option>
+          </select>
+          <input id="lovAnchorValue" type="text" inputmode="numeric" placeholder="Type a number&hellip;" title="The number to sit next to — whole numbers only" />
+          <select id="lovAnchorMod" title="The other mod to sit next to"></select>
+          <select id="lovFreeBand" title="The empty gap to move into"></select>
+          <button id="lovPropose" type="button" class="secondary" title="Show what will change before anything is written">Preview the move</button>
+        </div>
+        <div id="lovNofit" class="toolbar" hidden>
+          <span class="meta">It does not fit in that gap:</span>
+          <div class="seg" id="lovNofitSeg">
+            <button type="button" data-nofit="even" title="Spread the block evenly across the gap">Spread evenly</button>
+            <button type="button" data-nofit="overflow-below" title="Put the block below everything else">Spill below everything</button>
+            <button type="button" data-nofit="manual" title="Type each number yourself">Type each number</button>
+          </div>
+        </div>
+        <div id="lovNeedGap" class="note"></div>
+        <div id="lovWarnings"></div>
+        <div id="lovPreview" class="list"></div>
+        <div id="lovManual" class="list"></div>
+        <div class="toolbar">
+          <button id="lovApply" type="button" disabled title="Write the new numbers in one step — refused while the game is running">Move it</button>
+          <span class="meta" id="lovApplyMeta"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Your overrides <span id="lovCount" class="count"></span></h2>
+      </div>
+      <div class="note">
+        These are your changes, not the library's. Load order is per action, not
+        per mod, and an override survives a mod updating &mdash; as long as the
+        toolkit has synced since.
+      </div>
+      <div class="list" id="lovList"></div>
+    </section>
+  </section>
+
+  <!-- ===== Conflicts (read-only diagnostics) ===== -->
+  <section class="page" id="page-conflicts" hidden>
+    <div id="cfAlerts"></div>
+    <p class="hint">Diagnostics for the active profile. Start with cross-mod collisions and game-logged errors — those break games; shadowing rows with no winner are choices to pin down, not crashes.</p>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>UI file shadowing <span id="cfShadowCount" class="count"></span></h2>
+        <div class="panel-actions">
+          <button id="cfRunShadow" type="button" class="secondary">Run enumeration</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="note" id="cfShadowEnv"></div>
+        <div class="list tall" id="cfShadowList"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Mod packaging <span id="cfPackagingCount" class="count"></span></h2>
+        <div class="panel-actions">
+          <button id="cfRunPackaging" type="button" class="secondary" title="Find files the game never loads, tables in the wrong database, and ids two mods share — run this after adding or updating mods, then fix the rows it lists">Check packaging</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="note" id="cfPackagingEnv"></div>
+        <div class="list" id="cfPackagingList"></div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2>DB collision replay <span id="cfReplayCount" class="count"></span></h2>
+        <div class="panel-actions">
+          <label class="meta" for="cfFkMode">How to handle missing references</label>
+          <select id="cfFkMode" title="Leave Off to replay like the game: a statement with a missing reference is skipped and the rest still run. Switch On for a strict comparison: each file stops at the first missing reference.">
+            <option value="off">Off — game-like: skip past missing references</option>
+            <option value="on">On — strict: stop each file at the first missing reference</option>
+          </select>
+          <button id="cfRunReplay" type="button" class="secondary">Run replay</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="note" id="cfReplayEnv"></div>
+        <div class="list tall" id="cfReplayCollisions"></div>
+        <h3>Files the replay skipped or stopped on</h3>
+        <div class="list" id="cfReplayGated"></div>
+        <h3>Statements that changed nothing</h3>
+        <div class="list" id="cfReplayZeroRows"></div>
+        <h3>Log pairing report</h3>
+        <div class="toolbar">
+          <input id="cfDiffFilter" class="filter" type="search" placeholder="Type a mod&rsquo;s full name&hellip;" title="Show only the mod with exactly this full name — type the whole name" />
+          <label class="toggle" title="Hide the findings no mod could be named for. The count says how many are hidden — untick to show them again."><input type="checkbox" id="cfHideUnattributed" /> Hide unnamed findings</label>
+        </div>
+        <div class="meta" id="cfDiffNote"></div>
+        <div class="list" id="cfReplayDiff"></div>
+      </div>
+    </section>
+  </section>
+
   <footer id="bar" class="actionbar" hidden>
     <div id="pending" class="pending">No changes</div>
     <div class="bar-actions">
@@ -229,9 +494,15 @@
   <div id="toast" class="toast" hidden></div>
 
   <script src="app.js"></script>
+  <script src="modsort.js"></script>
   <script src="dashboard.js"></script>
   <script src="config.js"></script>
   <script src="mods.js"></script>
   <script src="saves.js"></script>
+  <script src="profiles.js"></script>
+  <script src="loadorder.js"></script>
+  <script src="looverrides.js"></script>
+  <script src="conflicts.js"></script>
+  <script src="gamesetup.js"></script>
 </body>
 </html>

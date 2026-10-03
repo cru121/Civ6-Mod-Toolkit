@@ -26,6 +26,12 @@ function toast(msg, kind, detail) {
   toast._t = setTimeout(() => (t.hidden = true), kind === 'err' ? 8000 : 5000);
 }
 
+// A number for display, or nothing. Lives here rather than in a page because
+// three scripts wanted it and two of them declared it, which is a SyntaxError
+// in a browser: classic scripts share one global scope, and a duplicate
+// top-level const makes the browser discard BOTH files.
+const n = (v) => (v == null ? '' : Number(v).toLocaleString());
+
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => (
     { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -47,12 +53,39 @@ function parseCivColor(tag) {
   const key = t.replace(/[^A-Za-z]/g, '').toUpperCase();
   return CIV_COLORS[key] || null;
 }
+// Mod text is XML, so a name can arrive with entities in it: one mod is called
+// "[COLOR_FLOAT_SCIENCE]Leugi &amp; Lime[ENDCOLOR] ..." and the game stores
+// exactly that, so decoding at the point of display is the only place it can
+// happen - changing what we write to the database would stop matching the game.
+// Decoding before escaping means "&amp;" becomes "&" and esc() puts it back as
+// a single entity, so it renders as "&" rather than "&amp;amp;".
+const XML_ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+function decodeXml(s) {
+  return s.replace(/&(#x?[0-9a-f]+|[a-z]+);/gi, (whole, body) => {
+    if (body[0] === '#') {
+      const n = body[1] === 'x' || body[1] === 'X' ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
+      // Only ever a real character. Numeric references to < or > are left
+      // alone so a numeric entity can never smuggle markup into the page.
+      return Number.isFinite(n) && n > 0 && n < 0x110000 && n !== 0x3c && n !== 0x3e ? String.fromCodePoint(n) : whole;
+    }
+    const key = body.toLowerCase();
+    return Object.prototype.hasOwnProperty.call(XML_ENTITIES, key) ? XML_ENTITIES[key] : whole;
+  });
+}
+
+// Escapes, but treats the text as XML first. Everything that reaches the page
+// as mod text goes through here, so an entity in a name, teaser or description
+// renders as the character it stands for.
+function escText(s) {
+  return esc(decodeXml(String(s == null ? '' : s)));
+}
+
 function renderCivText(s) {
   s = String(s == null ? '' : s);
   const re = /\[([^\]]+)\]/g;
   let out = '', last = 0, depth = 0, m;
   while ((m = re.exec(s))) {
-    out += esc(s.slice(last, m.index));
+    out += escText(s.slice(last, m.index));
     last = re.lastIndex;
     const up = m[1].toUpperCase();
     if (up === 'ENDCOLOR') { if (depth) { out += '</span>'; depth--; } }
@@ -63,9 +96,16 @@ function renderCivText(s) {
     } else if (up === 'NEWLINE') { out += ' '; }
     // any other tag ([ICON_*], etc.) is dropped
   }
-  out += esc(s.slice(last));
+  out += escText(s.slice(last));
   while (depth-- > 0) out += '</span>';
   return out;
+}
+
+// Plain-text form of renderCivText for contexts where HTML cannot render
+// (<option> text, native confirm()/prompt() dialogs). Drops the same [...]
+// markup runs renderCivText handles, decodes entities, collapses whitespace.
+function stripCivText(s) {
+  return decodeXml(String(s == null ? '' : s).replace(/\[([^\]]+)\]/g, ' ')).replace(/\s+/g, ' ').trim();
 }
 
 // ---- router ----------------------------------------------------------------

@@ -5,7 +5,8 @@
 //
 // Override precedence (highest first):
 //   1. civ6-paths.json in the project root (or CIV6_PATHS_FILE)
-//   2. env vars CIV6_LOCAL_MODS / CIV6_WORKSHOP / CIV6_SAVES / CIV6_MODS_DB
+//   2. env vars CIV6_LOCAL_MODS / CIV6_WORKSHOP / CIV6_SAVES / CIV6_MODS_DB /
+//      CIV6_LOGS_DIR / CIV6_CACHE_DIR
 //   3. guessed defaults (probed for existence)
 //
 // A "source" is { type: 'local'|'workshop', label, root, exists }.
@@ -50,6 +51,14 @@ function documentsCandidates() {
 function myGamesRoot() {
   const roots = documentsCandidates().map((d) => path.join(d, 'My Games', GAME_DIR));
   return firstExisting(roots) || path.join(os.homedir(), 'Documents', 'My Games', GAME_DIR);
+}
+
+// Local Firaxis root (%LOCALAPPDATA%\Firaxis Games\<GAME_DIR>) — the same
+// Local root getModsDb() uses. The game may keep Cache here instead of the
+// Documents-side My Games root.
+function localGamesRoot() {
+  const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  return path.join(local, 'Firaxis Games', GAME_DIR);
 }
 
 // --- Steam / Workshop -------------------------------------------------------
@@ -111,28 +120,164 @@ function workshopRoots() {
   return roots;
 }
 
+// --- Handing a path to a native program -------------------------------------
+
+// Node accepts the game's forward-slash paths everywhere, so nothing inside the
+// toolkit needs converting: fs, path and the SQL all cope. A native program is
+// different, and explorer.exe is the sharpest example.
+//
+// explorer.exe reads the first field of an argument that begins with "/" as a
+// switch. Given "D:/Steam/.../289070/12345" it sees /Steam, /steamapps,
+// /workshop as unknown switches, is left with no path at all, and quietly opens
+// Documents instead. It exits non-zero whether it worked or not, so nothing
+// reports the mistake - the window opens, just in the wrong place.
+//
+// Convert at the boundary, once, only for the program being launched. Internal
+// comparisons must keep the game's own form, or "is this folder ours" starts
+// depending on which separator some layer happened to use.
+//
+// On POSIX the forward-slash form already *is* native, so this is a no-op there.
+function toNativePath(p) {
+  const s = String(p || '');
+  return process.platform === 'win32' ? s.replace(/\//g, '\\') : s;
+}
+
 // --- Assemble sources -------------------------------------------------------
 
+// Where the overrides live. Honoured on the write path too, not just the read
+// one - a test or a relocated install that reads overrides from somewhere else
+// and writes them to the project root is how a real config gets clobbered.
+function overridesFile() {
+  return process.env.CIV6_PATHS_FILE || path.join(__dirname, '..', 'civ6-paths.json');
+}
+
+// What each key is allowed to be. 'workshop' is the odd one: a single path or a
+// list, because a Steam install often spans several library roots.
+//
+// A key whose value is the wrong shape is dropped rather than passed through.
+// getSources() reads `ov.localMods || fallback`, so a number or an object here
+// was truthy, survived the guard and reached statSync as a path - which
+// reported the folder as merely missing rather than the file as broken.
+const OVERRIDE_KEYS = {
+  localMods: (v) => (typeof v === 'string' && v.trim() ? v : null),
+  saves: (v) => (typeof v === 'string' && v.trim() ? v : null),
+  modsDb: (v) => (typeof v === 'string' && v.trim() ? v : null),
+  logsDir: (v) => (typeof v === 'string' && v.trim() ? v : null),
+  cacheDir: (v) => (typeof v === 'string' && v.trim() ? v : null),
+  workshop: (v) => {
+    if (typeof v === 'string' && v.trim()) return [v];
+    if (Array.isArray(v) && v.length && v.every((x) => typeof x === 'string' && x.trim())) return v.slice();
+    return null;
+  },
+};
+
+// Reading the overrides must never take the mod list down with it. A typo in
+// this file means every mod looks like it vanished, and before this reported
+// itself the user had no way to tell that from an empty library.
+//
+// Two levels of failure, the same distinction labels.js draws: a file that is
+// not the shape we write is unusable *as a whole*, while one bad key among good
+// ones costs only that key. An unknown key is ignored without complaint, so a
+// hand-added note or a `_comment` is not an error.
+let overridesCache = null;
+
 function loadOverrides() {
-  const file = process.env.CIV6_PATHS_FILE || path.join(__dirname, '..', 'civ6-paths.json');
+  if (overridesCache) return overridesCache;
+  const file = overridesFile();
+  const name = path.basename(file);
+
+  let text;
   try {
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
-  } catch (_) {
-    return {};
+    text = fs.readFileSync(file, 'utf8');
+  } catch (e) {
+    // No file is the normal state: nothing overridden, nothing wrong. Anything
+    // else - permissions, a directory in its place - is not.
+    return (overridesCache = e.code === 'ENOENT'
+      ? { overrides: {}, error: null, unusable: false, file }
+      : { overrides: {}, error: `${name} could not be read (${e.message})`, unusable: true, file });
   }
+  if (!text.trim()) return (overridesCache = { overrides: {}, error: null, unusable: false, file });
+
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (e) {
+    return (overridesCache = {
+      overrides: {}, error: `${name} is not valid JSON (${e.message})`, unusable: true, file,
+    });
+  }
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return (overridesCache = {
+      overrides: {}, error: `${name} does not contain an object`, unusable: true, file,
+    });
+  }
+
+  const overrides = {};
+  const bad = [];
+  for (const [key, check] of Object.entries(OVERRIDE_KEYS)) {
+    if (raw[key] === undefined || raw[key] === null) continue;
+    const value = check(raw[key]);
+    if (value) overrides[key] = value;
+    else bad.push(key);
+  }
+  return (overridesCache = {
+    overrides,
+    error: bad.length
+      ? `${bad.join(' and ')} in ${name} could not be read and ${bad.length === 1 ? 'was' : 'were'} ignored`
+      : null,
+    unusable: false,
+    file,
+  });
+}
+
+// What the UI needs to say about the overrides file: a message to show, and
+// whether a write may proceed at all.
+function overridesStatus() {
+  const { error, unusable, file } = loadOverrides();
+  return { error, unusable, file };
+}
+
+// Write the overrides back.
+//
+// Refuses outright when the file exists but is not the shape we write, for the
+// same reason labels.js does: building on an unreadable file would replace
+// whatever it holds, and a user whose paths stopped working deserves to fix or
+// delete the file by hand rather than have it overwritten by a click they did
+// not think of as destructive.
+//
+// Written through atomicWrite rather than writeFileSync, because this file is
+// what says where the mods are. A half-written one is not a partial override -
+// it is every mod gone, and reads of a broken file fall back to the defaults.
+function writeOverrides(obj) {
+  const current = loadOverrides();
+  if (current.unusable) {
+    throw new Error(`${current.error} - nothing was written. Fix or delete ${path.basename(current.file)}, then try again.`);
+  }
+  const next = {};
+  for (const key of Object.keys(OVERRIDE_KEYS)) {
+    if (obj[key] === undefined || obj[key] === null || obj[key] === '') continue;
+    const value = OVERRIDE_KEYS[key](Array.isArray(obj[key]) && key !== 'workshop' ? obj[key][0] : obj[key]);
+    if (value) next[key] = value;
+  }
+  const { atomicWrite } = require('./editor');
+  atomicWrite(current.file, JSON.stringify(next, null, 2));
+  overridesCache = null; // re-read on next use, so the cache cannot go stale
+  return { ok: true, file: current.file };
 }
 
 function getSources() {
-  const ov = loadOverrides();
+  const { overrides: ov } = loadOverrides();
   const sources = [];
 
   // Local mods
   const localRoot = ov.localMods || process.env.CIV6_LOCAL_MODS || path.join(myGamesRoot(), 'Mods');
   sources.push({ type: 'local', label: 'Local / custom mods', root: localRoot, exists: existsDir(localRoot) });
 
-  // Workshop mods (may be several library roots; overrides win if provided)
+  // Workshop mods (may be several library roots; overrides win if provided).
+  // loadOverrides has already normalised 'workshop' to a list, so a single
+  // string in the file is handled by the same code path as three.
   let wsRoots;
-  if (ov.workshop) wsRoots = Array.isArray(ov.workshop) ? ov.workshop : [ov.workshop];
+  if (ov.workshop) wsRoots = ov.workshop;
   else if (process.env.CIV6_WORKSHOP) wsRoots = [process.env.CIV6_WORKSHOP];
   else wsRoots = workshopRoots();
   if (wsRoots.length === 0) {
@@ -146,7 +291,7 @@ function getSources() {
 }
 
 function getSavesDir() {
-  const ov = loadOverrides();
+  const { overrides: ov } = loadOverrides();
   const dir = ov.saves || process.env.CIV6_SAVES || path.join(myGamesRoot(), 'Saves', 'Single');
   return { root: dir, exists: existsDir(dir) };
 }
@@ -155,7 +300,7 @@ function getSavesDir() {
 // LocalAppData, not Documents. Note the sibling "...Civilization VII" folder has
 // its own Mods.sqlite — never pick that one.
 function getModsDb() {
-  const ov = loadOverrides();
+  const { overrides: ov } = loadOverrides();
   const local = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const file = ov.modsDb || process.env.CIV6_MODS_DB ||
     path.join(local, 'Firaxis Games', GAME_DIR, 'Mods.sqlite');
@@ -164,4 +309,23 @@ function getModsDb() {
   return { path: file, exists };
 }
 
-module.exports = { getSources, getSavesDir, getModsDb, myGamesRoot };
+// The game's log folder (Database.log, Modding.log) and cache folder
+// (DebugGameplay.sqlite). Both live under the Local-side Firaxis root, not
+// Documents. Same shape as getSavesDir: { root, exists }.
+function getLogsDir() {
+  const { overrides: ov } = loadOverrides();
+  const dir = ov.logsDir || process.env.CIV6_LOGS_DIR || path.join(localGamesRoot(), 'Logs');
+  return { root: dir, exists: existsDir(dir) };
+}
+
+function getCacheDir() {
+  const { overrides: ov } = loadOverrides();
+  const dir = ov.cacheDir || process.env.CIV6_CACHE_DIR || path.join(localGamesRoot(), 'Cache');
+  return { root: dir, exists: existsDir(dir) };
+}
+
+module.exports = {
+  getSources, getSavesDir, getModsDb, getLogsDir, getCacheDir,
+  myGamesRoot, localGamesRoot, toNativePath,
+  overridesFile, overridesStatus, writeOverrides,
+};

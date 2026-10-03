@@ -140,4 +140,7 @@ function saveConfig(configPath, opts = {}) {
   return summary;
 }
 
+// atomicWrite is exported rather than reimplemented: a second temp-file-and-
+// rename here would be a second set of write rules, and the .Civ6Cfg saver and
+// the label store must not be able to disagree about what "saved safely" means.
 module.exports = { buildTitle, backupFile, atomicWrite, applyEdits, validate, saveConfig };

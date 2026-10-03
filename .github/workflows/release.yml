@@ -1,0 +1,198 @@
+name: Release
+
+# Pushing a version tag (v1.1.0, v2.0.0-rc1, ...) builds the downloadable zip
+# and attaches it to a GitHub release. The checks below run first, so a broken
+# commit can never be published - the job simply fails and nothing is released.
+#
+# A tag with a pre-release suffix (-rc1, -beta2, ...) is published as a
+# GitHub *pre-release* and is deliberately not marked as the latest release, so
+# the download links in the README and the docs site keep pointing at the last
+# real version. It is a build to try before tagging the final, not a release in
+# its own right. An rc also borrows the release notes of the version it leads to,
+# so what you test and what you ship are described the same way.
+#
+# Re-running: "Run workflow" rebuilds the release for a tag that already exists,
+# so a failed publish never needs the tag deleted and pushed again.
+#
+# Running the checks without publishing: dispatch with mode=verify, and with the
+# tag left empty to check whatever ref you dispatched from. Every check below
+# still runs and the job is still red if one fails - only the zip and the release
+# are skipped. This is how the checks are exercised on an ordinary commit, given
+# that this is the only workflow in the repo and it otherwise speaks up only when
+# a tag is pushed.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build the release for, e.g. v1.1.0. Empty means the ref you dispatched from.'
+        required: false
+      mode:
+        description: 'verify runs every check and publishes nothing'
+        type: choice
+        options:
+          - publish
+          - verify
+        default: publish
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    # Windows, not Linux: the toolkit only runs on Windows (registry, tasklist,
+    # %LOCALAPPDATA%, the .cmd launcher), so that is where it is worth checking.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # A manual run builds the tag it was given, not the branch it is on.
+          ref: ${{ inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check every source file parses
+        shell: pwsh
+        run: |
+          # Judge by the exit code, not by stderr, so a failure names the file.
+          $PSNativeCommandUseErrorActionPreference = $false
+          # public/ as well as src/. The mod manager's whole UI is public/*.js,
+          # loaded by the browser and never required by node, so nothing else in
+          # this job would ever notice a syntax error in it - it would ship, and
+          # the page would fail to render for every user on first load. Both
+          # v1.6.0 features live there.
+          Get-ChildItem src, public -Filter *.js | ForEach-Object {
+            node --check $_.FullName
+            if ($LASTEXITCODE -ne 0) { throw "syntax error in $($_.FullName)" }
+          }
+          $count = (Get-ChildItem src, public -Filter *.js).Count
+          Write-Host "parsed $count files"
+          if ($count -lt 10) { throw "expected at least 10 source files, found $count - has a glob stopped matching?" }
+
+      - name: Verify the release gate
+        # The list lives in package.json as check:release, so adding a suite to
+        # the gate is a one-file change and this file cannot drift out of step
+        # with it. Currently phase4, phase5 and phase6 - the three that seed
+        # their own scratch data. phase1 and phase2 need a real .Civ6Cfg in the
+        # git-ignored fixtures folder and so fail on every machine, runner
+        # included; a gate that is always red is a gate nobody reads.
+        run: npm run check:release
+
+      - name: Refuse to publish without a tag
+        # Only reachable by dispatch: a tag push never gets here with an empty
+        # tag, because that is the normal case. Made optional so the checks can
+        # be run against a branch, which would otherwise let "publish" be asked
+        # for with nothing to publish and fail obscurely on the last step.
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'publish' && inputs.tag == '' }}
+        shell: pwsh
+        run: |
+          Write-Error "mode=publish needs a tag. Pass one, or use mode=verify to run the checks only."
+          exit 1
+
+      - name: Build the zip
+        # Publishing only. On a tag push inputs.mode is empty, which is not
+        # 'verify', so a real release is unaffected by this condition.
+        if: ${{ inputs.mode != 'verify' }}
+        id: build
+        shell: pwsh
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          $stage = Join-Path $env:GITHUB_WORKSPACE 'dist\Civ6-Mod-Toolkit'
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          # Everything the user needs; nothing that is rebuilt, downloaded or
+          # personal. The launcher runs `npm install` itself on first start.
+          $include = @(
+            'Civ6 Mod Toolkit.cmd', 'src', 'public', 'docs', 'fixtures',
+            'package.json', 'package-lock.json', 'README.md', 'CHANGELOG.md',
+            'FINDINGS.md', 'LICENSE', 'civ6-paths.example.json'
+          )
+          foreach ($item in $include) {
+            $path = Join-Path $env:GITHUB_WORKSPACE $item
+            if (Test-Path $path) { Copy-Item $path -Destination $stage -Recurse }
+          }
+          $zip = "Civ6-Mod-Toolkit-$env:TAG.zip"
+          Push-Location $env:GITHUB_WORKSPACE\dist
+          # bsdtar rather than Compress-Archive, which writes '\' inside the zip
+          # instead of '/'. The full path keeps the Git Bash tar off it, and the
+          # relative name keeps tar from reading "C:" as a remote host.
+          & "$env:SystemRoot\System32\tar.exe" -a -c -f $zip Civ6-Mod-Toolkit
+          Pop-Location
+          $built = Join-Path $env:GITHUB_WORKSPACE "dist\$zip"
+          if (-not (Test-Path $built)) { throw "the zip was not created: $built" }
+          Get-ChildItem (Join-Path $stage '*') -Recurse -File |
+            Measure-Object -Property Length -Sum |
+            ForEach-Object { "{0:N1} MB uncompressed" -f ($_.Sum / 1MB) }
+          Write-Host "built dist\$zip"
+          # Hand the exact path to the next step instead of rebuilding the name.
+          "zip=dist/$zip" >> $env:GITHUB_OUTPUT
+
+      - name: Create the release
+        if: ${{ inputs.mode != 'verify' }}
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+          ZIP: ${{ steps.build.outputs.zip }}
+        run: |
+          # A tag like v1.6.0-rc1 is a test build for the author to click, not a
+          # release. Left alone, gh publishes it as a full release and --latest
+          # hands it the "latest release" pointer, which is what the download
+          # links in the README and the docs site follow. So the two are decided
+          # together: pre-release, or latest - never both.
+          $isPre = $env:TAG -match '-(alpha|beta|rc|pre)\.?\d*$'
+          $roll = if ($isPre) { '--prerelease' } else { '--latest' }
+          if ($isPre) { Write-Host "$env:TAG is a pre-release: publishing as a draft candidate, not the latest release" }
+
+          # Prefer the CHANGELOG entry for this tag over GitHub's auto-generated
+          # commit list, which is a wall of "Add ... to ..." lines. Fall back to
+          # the generated notes if the entry is missing, so a release is never
+          # published without any notes at all.
+          $notes = $null
+          $changelog = Join-Path $env:GITHUB_WORKSPACE 'CHANGELOG.md'
+          if (Test-Path $changelog) {
+            $lines = Get-Content $changelog
+            # A pre-release tag has no heading of its own, so fall back to the
+            # version it leads to: v1.6.0-rc1 borrows the notes for v1.6.0. An
+            # author testing the build wants the same notes the real release will
+            # carry, not the commit list.
+            $candidates = @($env:TAG)
+            if ($isPre -and $env:TAG -match '^(.+?)-\w+$') { $candidates += $Matches[1] }
+            foreach ($cand in $candidates) {
+              $start = -1
+              for ($i = 0; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match "^##\s+$([regex]::Escape($cand))(\s|$)") { $start = $i; break }
+              }
+              if ($start -lt 0) { continue }
+              $end = $lines.Count
+              for ($i = $start + 1; $i -lt $lines.Count; $i++) {
+                if ($lines[$i] -match '^##\s') { $end = $i; break }
+              }
+              # Drop the "## v1.2.0 - date" heading itself; the tag is the title.
+              $body = @()
+              if ($end -gt ($start + 1)) { $body = $lines[($start + 1)..($end - 1)] }
+              while ($body.Count -and [string]::IsNullOrWhiteSpace($body[0])) { $body = $body[1..($body.Count - 1)] }
+              while ($body.Count -and [string]::IsNullOrWhiteSpace($body[-1])) { $body = $body[0..($body.Count - 2)] }
+              if ($body.Count) {
+                $notes = Join-Path $env:RUNNER_TEMP 'notes.md'
+                Set-Content -Path $notes -Value ($body -join "`n") -Encoding utf8
+                Write-Host "using the CHANGELOG entry for $cand ($($body.Count) lines)"
+              }
+              break
+            }
+          }
+          if ($notes) {
+            gh release create $env:TAG $env:ZIP --title $env:TAG --notes-file $notes $roll --verify-tag
+          } else {
+            Write-Warning "no CHANGELOG entry for $env:TAG; using generated notes"
+            gh release create $env:TAG $env:ZIP --title $env:TAG --generate-notes $roll --verify-tag
+          }

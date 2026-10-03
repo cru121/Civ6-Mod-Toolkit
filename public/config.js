@@ -58,12 +58,12 @@ async function loadConfig(p) {
   }
   const v = await api('/api/config?path=' + encodeURIComponent(p));
   state.view = v;
-  render();
+  renderConfig();
   $('editor').hidden = false; $('bar').hidden = false;
   $('deleteConfig').disabled = false;
 }
 
-function render() {
+function renderConfig() {
   const v = state.view;
   const enabled = v.enabled;
   const avail = v.availableToAdd;
@@ -114,8 +114,8 @@ function updateBar() {
 // ---- events ----------------------------------------------------------------
 
 $('configSelect').addEventListener('change', (e) => loadConfig(e.target.value).catch((err) => toast(err.message, 'err')));
-$('availFilter').addEventListener('input', render);
-$('showDlc').addEventListener('change', (e) => { state.showDlc = e.target.checked; if (state.view) render(); });
+$('availFilter').addEventListener('input', renderConfig);
+$('showDlc').addEventListener('change', (e) => { state.showDlc = e.target.checked; if (state.view) renderConfig(); });
 
 $('page-config').addEventListener('change', (e) => {
   const el = e.target;
@@ -177,7 +177,7 @@ $('saveNew').addEventListener('click', () => doSave('new'));
 $('deleteConfig').addEventListener('click', async () => {
   if (!state.configPath) return;
   const name = state.view ? state.view.name : state.configPath;
-  if (!confirm(`Delete "${name}"?\n\nA timestamped backup is kept so it can be restored.`)) return;
+  if (!confirm(`Delete "${stripCivText(name)}"?\n\nA timestamped backup is kept so it can be restored.`)) return;
   try {
     const r = await postJson('/api/delete', { path: state.configPath });
     toast('Configuration deleted.', 'ok', r.backupPath ? `backup: ${r.backupPath}` : '');

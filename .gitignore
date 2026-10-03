@@ -6,8 +6,22 @@ node_modules/
 *.Civ6Save
 *.bak-*
 civ6-paths.json
+mod-labels.json
+
+# AI agent environment - planning artifacts and session state, never shipped
+openspec/
+.opencode/
+.agents/
+.openchamber/
 
 # misc
 scratch_*
 *.log
 .DS_Store
+AGENTS.md
+
+# browser-tool screenshots taken while checking the UI
+
+# load order overrides - one file per user, and it names an action by a key we compute
+load-order-overrides.json
+game-setup.json

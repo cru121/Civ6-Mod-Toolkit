@@ -37,6 +37,32 @@ function humanTitle(title) {
 let allPass = true;
 const fail = (msg) => { allPass = false; console.log(`      !! ${msg}`); };
 
+// No fixture means no work was done, and that must not look like a pass.
+//
+// Every other suite in this repo seeds its own data; phase0 is the exception,
+// because a real .Civ6Cfg embeds the game and session name it was saved under
+// and cannot be committed. With none present the loop below never runs, allPass
+// is still true, and this used to print ALL CHECKS PASSED and exit 0 - a green
+// that meant nothing, which was then reported as a green in a release commit
+// message. Failing loudly says "run me with a config", which is the truth, and
+// is a red that cannot be mistaken for a pass.
+if (files.length === 0) {
+  console.log('PHASE 0: nothing to check, so nothing passed.');
+  console.log('');
+  console.log(`  No .Civ6Cfg in ${FIX_DIR}.`);
+  console.log('');
+  console.log('  This suite round-trips a real game configuration, and one cannot be');
+  console.log('  committed because it names your game and session. To run it, drop one of');
+  console.log('  your own in there:');
+  console.log('');
+  console.log("    copy '%USERPROFILE%\\My Games\\Sid Meier's Civilization VI\\Saves\\Single\\<save>.Civ6Cfg' .");
+  console.log('');
+  console.log('  This is not a failure of the code, and phase0 is not part of the release');
+  console.log('  gate. `npm run check:release` runs phase4, phase5 and phase6, which seed');
+  console.log('  their own data and need nothing from you. See fixtures/README.md.');
+  process.exit(1);
+}
+
 for (const file of files) {
   const full = path.join(FIX_DIR, file);
   const buf = fs.readFileSync(full);
@@ -49,6 +75,17 @@ for (const file of files) {
     blocks = cfg.parseConfig(buf).blocks;
   } catch (e) {
     fail(`parse failed: ${e.message}`);
+    continue;
+  }
+
+  // The same trap one level deeper. A file that is not a .Civ6Cfg at all parses
+  // to zero blocks without throwing, every sub-check below then loops over
+  // nothing, and the suite reports success having checked nothing - so pointing
+  // phase0 at the wrong file looked exactly like passing. Found by dropping a
+  // non-config in fixtures/ to prove the guard above; the guard was fine, this
+  // was not.
+  if (!blocks.length) {
+    fail(`no mod blocks found in ${file} - is this actually a .Civ6Cfg? (${buf.length} bytes parsed)`);
     continue;
   }
 
