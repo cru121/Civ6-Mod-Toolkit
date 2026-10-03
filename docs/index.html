@@ -79,9 +79,9 @@
   <section class="hero">
     <h1>Manage your Civ VI mods without starting the game</h1>
     <p class="lede">A small Windows tool for Sid Meier's Civilization VI. It opens in your browser. You can turn mods and DLC on and off, and add or remove mods in a saved game configuration without setting it up again.</p>
-    <a class="download" id="download" href="https://github.com/cru121/Civ6-Mod-Toolkit/releases/download/v1.1.0/Civ6-Mod-Toolkit-v1.1.0.zip">
+    <a class="download" id="download" href="https://github.com/cru121/Civ6-Mod-Toolkit/releases/download/v1.2.0/Civ6-Mod-Toolkit-v1.2.0.zip">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
-      <span id="download-label">Download v1.1.0</span>
+      <span id="download-label">Download v1.2.0</span>
     </a>
     <div class="meta"><span id="download-meta">Windows 10 or 11 · needs Node.js 22.5+</span> · <a href="https://github.com/cru121/Civ6-Mod-Toolkit/releases">All releases</a></div>
   </section>
@@ -124,6 +124,7 @@ npm start</code></pre>
   <ol>
     <li>Pick a configuration file.</li>
     <li>Untick mods on the left to remove them, and tick installed mods on the right to add them.</li>
+    <li>A mod tagged <strong>not scanned</strong> is on disk but unknown to the game (for example, not subscribed). Start Civ6 once so it registers the mod, or the game may reject the configuration.</li>
     <li>Choose <strong>Save (overwrite + backup)</strong> or <strong>Save as new file…</strong>.</li>
     <li>In the game, go to Single Player → Create Game and load the configuration.</li>
   </ol>
@@ -137,7 +138,7 @@ npm start</code></pre>
   </ol>
 
   <h2 id="cli">Command line and AI assistants</h2>
-  <p>The mod manager is also available as a command that prints JSON, so scripts and AI assistants such as Claude can check and toggle mods without the browser. It is in the source repository and in releases after v1.1.0.</p>
+  <p>The mod manager is also available as a command that prints JSON, so scripts and AI assistants such as Claude can check and toggle mods without the browser. It is included since v1.2.0.</p>
   <pre><code>node src/mods-cli.js status
 node src/mods-cli.js list --enabled --search "city"
 node src/mods-cli.js disable "Some Mod" --dry-run
