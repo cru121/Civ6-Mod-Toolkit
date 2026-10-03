@@ -31,10 +31,40 @@ node src/mods-cli.js disable "<name or id>" ["<name or id>" ...] [--dry-run]
 - `shipsGameCoreDll: true` marks a mod that contains a native `.dll` (a replacement GameCore). Such mods can conflict
   with each other and with game updates; `status` and `enable` warn when more than one is enabled.
 
+## Mods inside saved games (`.Civ6Save`)
+
+A save records the mods it was made with, and the game asks for them when loading. A save that won't load because of a
+missing mod can be fixed by removing that mod from the save; a mod can also be added to a save. This is a different
+thing from enabling/disabling mods above: it edits the save file, not `Mods.sqlite`. It works while Civ6 runs.
+
+```
+node src/saves-cli.js list [--search "text"]                  # saves, newest first (also the auto/ subfolder)
+node src/saves-cli.js check  "<save>"                         # the save's mods, what can be added, warnings
+node src/saves-cli.js add    "<save>" "<mod>" ["<mod>" ...] [--dry-run] [--overwrite] [--as "<new name>"]
+node src/saves-cli.js remove "<save>" "<mod>" ["<mod>" ...] [--dry-run] [--overwrite] [--as "<new name>"]
+```
+
+- `<save>` is a file name (with or without `.Civ6Save`, e.g. `AutoSave_0388` or `auto/AutoSave_0008`), a unique part
+  of one, or a full path. Only files inside the saves folder are accepted. Ambiguous input returns `candidates`.
+- `<mod>` is a GUID, exact name or unique part of a name, like for `mods-cli.js`. For `remove` it is matched among the
+  mods in the save; for `add` among installed mods that are not in the save (`check` lists them as `addable`).
+- **Start with `check`**, then `--dry-run`. By default the edit is written to a **new copy** next to the original
+  (`<name> (edited).Civ6Save`, or `--as`); the original is untouched. `--overwrite` replaces it after making a
+  timestamped `.bak-` backup. Prefer the default and let the user decide about overwriting.
+- Each mod has a `kind`: `official` (DLC/expansion: can't be removed), `ui` (`AffectsSavedGames=0`: safe to add or
+  remove), `gameplay` (changes game content, so the save may depend on it), `unknown` (not installed). Adding or
+  removing `gameplay`/`unknown` mods is allowed but experimental: the result may fail to load. Relay `warnings`.
+- `check` warns about mods the save needs that aren't installed, which is the usual reason a save won't load.
+- The tool edits only the mod list in the file header and verifies the result before writing; the game data is untouched.
+
 ## Typical task
 
 "Disable all UI mods that make the report screen slow" translates to: `list --enabled`, pick the matching mods,
 `disable ... --dry-run`, show the user the list, then run again without `--dry-run`.
+
+"This save won't load, a mod is missing" translates to: `saves-cli.js check "<save>"`, find the `unknown` mods in
+`warnings`, `remove "<save>" "<mod>" --dry-run`, show the user, then run without `--dry-run` and tell them the name
+of the new file.
 
 ## Other things in this repo (only if the user asks)
 

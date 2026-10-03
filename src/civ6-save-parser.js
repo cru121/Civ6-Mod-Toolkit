@@ -263,11 +263,12 @@ module.exports.deleteMod = (buffer, modid) => {
   return result;
 };
 
-module.exports.addMod = (buffer, modId, modTitle) => {
+// blockFilter (optional, Civ6 Mod Toolkit patch): only add to blocks whose key it accepts.
+module.exports.addMod = (buffer, modId, modTitle, blockFilter) => {
   const result = this.parse(buffer);
 
   const modBlockList = Object.keys(result.parsed)
-    .filter((x) => x.startsWith('MOD_BLOCK_'))
+    .filter((x) => x.startsWith('MOD_BLOCK_') && (!blockFilter || blockFilter(x)))
     .map((x) => result.parsed[x]);
 
   for (const modBlock of modBlockList) {
@@ -577,7 +578,9 @@ function readArray0B(buffer, state) {
 }
 
 function writeString(marker, newValue) {
-  const safeValue = iconv.encode(diacritics.remove(newValue), 'ascii');
+  // Civ6 Mod Toolkit patch: the game stores non-Latin text (e.g. localized mod titles) as UTF-8
+  // bytes in this same string type, with the length counted in bytes. Plain ASCII is unchanged.
+  const safeValue = Buffer.from(newValue, 'utf8');
   const strLenBuffer = Buffer.from([0, 0, 0, 0x21, 1, 0, 0, 0]);
   strLenBuffer.writeUInt16LE(safeValue.length + 1, 0);
 

@@ -180,17 +180,25 @@
       <select id="saveSelect"><option value="">Loading…</option></select>
       <span id="saveMeta" class="meta"></span>
     </section>
-    <p class="hint">Remove mods from a saved game so it no longer asks for them. Your original is never changed unless you choose to overwrite it (a backup is kept).</p>
+    <p class="hint">Add or remove mods in a saved game. Your original is never changed unless you choose to overwrite it (a backup is kept).</p>
 
     <main id="saveEditor" hidden>
-      <section class="panel">
-        <div class="panel-head">
-          <h2>Mods in this save <span id="saveCount" class="count"></span></h2>
-        </div>
-        <div id="saveLegend" class="hint"></div>
-        <label class="toggle"><input type="checkbox" id="showOfficial" /> Show official DLC / expansions</label>
-        <div id="saveList" class="list tall"></div>
-      </section>
+      <div id="saveLegend" class="hint"></div>
+      <div class="columns">
+        <section class="col">
+          <h2>In this save <span id="saveCount" class="count"></span></h2>
+          <p class="hint">Uncheck a mod to remove it.</p>
+          <label class="toggle"><input type="checkbox" id="showOfficial" /> Show official DLC / expansions</label>
+          <div id="saveList" class="list tall"></div>
+        </section>
+
+        <section class="col">
+          <h2>Installed, not in this save <span id="saveAvailCount" class="count"></span></h2>
+          <p class="hint">Check a mod to add it.</p>
+          <input id="saveAvailFilter" class="filter" type="search" placeholder="Filter by name…" />
+          <div id="saveAvail" class="list tall"></div>
+        </section>
+      </div>
     </main>
   </section>
 

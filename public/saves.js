@@ -1,19 +1,20 @@
 'use strict';
 
-// Save editor page: remove mods from a .Civ6Save.
+// Save editor page: add and remove mods in a .Civ6Save.
 
 const savePage = {
   stale: true,
   savePath: null,
   view: null,
   removeSet: new Set(), // idNorm
+  addSet: new Set(),    // idNorm
   showOfficial: false,
 };
 const sv = savePage;
 
 const KIND = {
-  ui: { label: 'UI / no gameplay', hint: 'Not part of the saved game state: safe to remove.' },
-  gameplay: { label: 'changes gameplay', hint: 'Adds or changes game content. Its data may be baked into the save, so the game might not load it without the mod.' },
+  ui: { label: 'UI / no gameplay', hint: 'Not part of the saved game state: safe to add or remove.' },
+  gameplay: { label: 'changes gameplay', hint: 'Adds or changes game content. The save may depend on it, so adding or removing it can break loading.' },
   unknown: { label: 'not installed', hint: "Not installed here, so we can't tell what it does. Treat it like a gameplay mod." },
   official: { label: 'official', hint: 'Official game content. Can\'t be removed.' },
 };
@@ -45,6 +46,7 @@ pages.saves = {
 async function loadSave(p) {
   sv.savePath = p || null;
   sv.removeSet.clear();
+  sv.addSet.clear();
   if (!p) { $('saveEditor').hidden = true; $('saveBar').hidden = true; return; }
   sv.view = await api('/api/save-mods?path=' + encodeURIComponent(p));
   renderSave();
@@ -70,35 +72,56 @@ function renderSave() {
       <span class="tag ${m.kind}">${esc(d.label)}</span>
     </label>`;
   }).join('') || '<p class="hint">No mods to show.</p>';
+
+  const filter = $('saveAvailFilter').value.toLowerCase();
+  const avail = v.available.filter((m) => !filter || m.name.toLowerCase().includes(filter) || m.idNorm.includes(filter));
+  $('saveAvailCount').textContent = `(${v.available.length})`;
+  $('saveAvail').innerHTML = avail.map((m) => {
+    const add = sv.addSet.has(m.idNorm);
+    return `<label class="row ${add ? 'pending-add' : ''}" title="${esc(KIND[m.kind].hint)}">
+      <input type="checkbox" data-svadd="${esc(m.idNorm)}" ${add ? 'checked' : ''} ${v.editable ? '' : 'disabled'} />
+      <span class="name"><b>${renderCivText(m.name)}</b><small>${esc(m.id)}</small></span>
+      <span class="tag ${m.kind}">${esc(KIND[m.kind].label)}</span>
+    </label>`;
+  }).join('') || '<p class="hint">Nothing to add: every installed mod is already in this save.</p>';
   updateSaveBar();
 }
 
 function updateSaveBar() {
-  const n = sv.removeSet.size;
-  const risky = sv.view && sv.view.mods.filter((m) => sv.removeSet.has(m.idNorm) && m.kind !== 'ui').length;
-  $('savePending').innerHTML = n
-    ? `Pending: <b class="remove">−${n}</b> to remove` + (risky ? ` <span class="tag gameplay">${risky} may affect the saved game</span>` : '')
-    : 'Uncheck a mod to remove it from the save';
-  $('saveAsNew').disabled = !n;
-  $('saveOver').disabled = !n;
+  const r = sv.removeSet.size, a = sv.addSet.size;
+  const risky = sv.view && (
+    sv.view.mods.filter((m) => sv.removeSet.has(m.idNorm) && m.kind !== 'ui').length +
+    sv.view.available.filter((m) => sv.addSet.has(m.idNorm) && m.kind !== 'ui').length);
+  $('savePending').innerHTML = (a || r)
+    ? `Pending: <b class="add">+${a}</b> to add, <b class="remove">−${r}</b> to remove` +
+      (risky ? ` <span class="tag gameplay">${risky} may affect the saved game</span>` : '')
+    : 'No changes';
+  $('saveAsNew').disabled = !(a || r);
+  $('saveOver').disabled = !(a || r);
 }
 
 $('saveSelect').addEventListener('change', (e) => loadSave(e.target.value).catch((err) => toast(err.message, 'err')));
 $('showOfficial').addEventListener('change', (e) => { sv.showOfficial = e.target.checked; if (sv.view) renderSave(); });
+$('saveAvailFilter').addEventListener('input', () => { if (sv.view) renderSave(); });
 $('page-saves').addEventListener('change', (e) => {
   const el = e.target;
-  if (!el.dataset || el.dataset.sv === undefined) return;
-  if (!el.checked) sv.removeSet.add(el.dataset.sv); else sv.removeSet.delete(el.dataset.sv);
-  el.closest('.row').classList.toggle('pending-remove', !el.checked);
+  if (!el.dataset) return;
+  if (el.dataset.sv !== undefined) {
+    if (!el.checked) sv.removeSet.add(el.dataset.sv); else sv.removeSet.delete(el.dataset.sv);
+    el.closest('.row').classList.toggle('pending-remove', !el.checked);
+  } else if (el.dataset.svadd !== undefined) {
+    if (el.checked) sv.addSet.add(el.dataset.svadd); else sv.addSet.delete(el.dataset.svadd);
+    el.closest('.row').classList.toggle('pending-add', el.checked);
+  } else return;
   updateSaveBar();
 });
 
 async function doSaveEdit(mode) {
-  const risky = sv.view.mods.filter((m) => sv.removeSet.has(m.idNorm) && m.kind !== 'ui');
-  if (risky.length && !confirm(
-    `These mods may be part of the saved game itself:\n\n  ${risky.map((m) => m.name.replace(/\[[^\]]*\]/g, '')).join('\n  ')}\n\n` +
-    'The game may fail to load the result, or load it with missing content. Continue?')) return;
-  const payload = { path: sv.savePath, remove: sv.view.mods.filter((m) => sv.removeSet.has(m.idNorm)).map((m) => m.id), mode };
+  const payload = {
+    path: sv.savePath, mode,
+    add: sv.view.available.filter((m) => sv.addSet.has(m.idNorm)).map((m) => m.id),
+    remove: sv.view.mods.filter((m) => sv.removeSet.has(m.idNorm)).map((m) => m.id),
+  };
   if (mode === 'new') {
     const cur = sv.view.name.replace(/\.Civ6Save$/i, '');
     const name = prompt('Save as new file name:', `${cur} (edited)`);

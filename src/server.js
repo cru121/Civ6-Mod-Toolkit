@@ -17,6 +17,8 @@ const { scanMods, normId } = require('./modinfo');
 const inventory = require('./inventory');
 const editor = require('./editor');
 const civ6save = require('./civ6save');
+const savelist = require('./savelist');
+const { listSaves, isSavePath, saveMods } = savelist;
 const { readModState, readModDetails, applyChanges } = require('./modsdb');
 const { gameStatus } = require('./game');
 const { modList } = require('./modlist');
@@ -63,60 +65,6 @@ function listConfigs() {
   }
   out.sort((a, b) => a.name.localeCompare(b.name));
   return { savesRoot: saves.root, savesExists: saves.exists, configs: out };
-}
-
-// Saves live in the Saves/Single folder and one level of subfolders (auto/, ...).
-function listSaves() {
-  const saves = paths.getSavesDir();
-  const out = [];
-  if (saves.exists) {
-    const scan = (dir, rel) => {
-      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-        const full = path.join(dir, e.name);
-        if (e.isDirectory() && !rel) scan(full, e.name);
-        else if (e.isFile() && /\.Civ6Save$/i.test(e.name)) {
-          const st = fs.statSync(full);
-          out.push({ name: e.name, folder: rel, path: full, size: st.size, modified: st.mtimeMs });
-        }
-      }
-    };
-    try { scan(saves.root, ''); } catch (_) { /* unreadable folder: show what we have */ }
-  }
-  out.sort((a, b) => b.modified - a.modified);
-  return { savesRoot: saves.root, savesExists: saves.exists, saves: out };
-}
-
-// Only .Civ6Save files inside the saves folder may be read or changed.
-function isSavePath(p) {
-  if (typeof p !== 'string' || !/\.Civ6Save$/i.test(p)) return false;
-  const root = path.resolve(paths.getSavesDir().root) + path.sep;
-  return path.resolve(p).toLowerCase().startsWith(root.toLowerCase());
-}
-
-// A save's mods, each classified for the save editor:
-//   official - DLC / expansion content (removing it would break the save)
-//   ui       - AffectsSavedGames=0: not part of the saved game state, safe to drop
-//   gameplay - changes game rules/content: may be baked into the save
-//   unknown  - not installed, so we can't tell
-function saveMods(buffer) {
-  const { mods, blockKeys } = civ6save.listMods(buffer);
-  const installed = new Map(scanMods(paths.getSources()).map((m) => [m.idNorm, m]));
-  const modsDb = paths.getModsDb();
-  const dlc = new Map(); // official content: idNorm -> display name
-  if (modsDb.exists) {
-    const st = readModState(modsDb.path);
-    for (const d of st.mods) if (d.source === 'dlc' || d.source === 'base') dlc.set(d.idNorm, d.name);
-  }
-  const out = mods.map((m) => {
-    const f = installed.get(m.idNorm);
-    const title = inventory.humanTitle(m.title);
-    let kind = 'unknown';
-    if (dlc.has(m.idNorm) || (!f && /^LOC_[A-Z0-9_]+$/.test(title))) kind = 'official';
-    else if (f) kind = f.affectsSavedGames === false ? 'ui' : 'gameplay';
-    const name = f ? f.name : (dlc.get(m.idNorm) || title);
-    return { id: m.id, idNorm: m.idNorm, name, kind, installed: !!f, source: f ? f.type : null, blocks: m.blocks };
-  });
-  return { blockKeys, mods: out };
 }
 
 // Size, file count and newest modification time of a mod folder.
@@ -262,39 +210,15 @@ async function handleApi(req, res, url) {
     }
   }
 
-  // POST /api/save-edit { path, remove:[id], mode:'new'|'overwrite', newName } -> drop mods from a save
+  // POST /api/save-edit { path, add:[id], remove:[id], mode:'new'|'overwrite', newName } -> change a save's mods
   if (req.method === 'POST' && url.pathname === '/api/save-edit') {
-    const { path: p, remove = [], mode = 'new', newName } = await readBody(req);
-    if (!isSavePath(p) || !fs.existsSync(p)) return send(res, 400, { error: 'invalid save path' });
-    if (!Array.isArray(remove) || !remove.length) return send(res, 400, { error: 'no mods selected' });
+    const { path: p, add = [], remove = [], mode = 'new', newName } = await readBody(req);
+    if (!Array.isArray(add) || !Array.isArray(remove)) return send(res, 400, { error: 'add and remove must be lists' });
     try {
-      const original = fs.readFileSync(p);
-      const info = saveMods(original);
-      const byNorm = new Map(info.mods.map((m) => [m.idNorm, m]));
-      for (const id of remove) {
-        const m = byNorm.get(normId(id));
-        if (!m) return send(res, 400, { error: `mod not in this save: ${id}` });
-        if (m.kind === 'official') return send(res, 400, { error: `"${m.name}" is official game content and can't be removed from a save.` });
-      }
-      const edited = civ6save.applyRemoval(original, remove);
-
-      let outPath = p;
-      if (mode === 'new') {
-        let base = path.basename(String(newName || '').trim());
-        if (!base) return send(res, 400, { error: 'newName required for "new" mode' });
-        if (!/\.Civ6Save$/i.test(base)) base += '.Civ6Save';
-        outPath = path.join(path.dirname(p), base);
-        if (fs.existsSync(outPath)) return send(res, 409, { error: `file already exists: ${base}` });
-      }
-      const backupPath = mode === 'overwrite' ? editor.backupFile(p) : null;
-      editor.atomicWrite(outPath, edited);
-      return send(res, 200, {
-        ok: true, outPath, backupPath, removed: remove.length,
-        modsBefore: info.mods.length, modsAfter: civ6save.listMods(edited).mods.length,
-        bytesBefore: original.length, bytesAfter: edited.length,
-      });
+      const summary = savelist.editSave(p, { add, remove, mode, newName });
+      return send(res, 200, { ok: true, ...summary });
     } catch (e) {
-      return send(res, 500, { error: e.message, problems: e.problems || null });
+      return send(res, e.status || 500, { error: e.message, problems: e.problems || null });
     }
   }
 

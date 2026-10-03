@@ -12,9 +12,9 @@ A mod toolkit for Sid Meier's Civilization VI that runs outside the game:
   the game, with warnings for missing dependencies and conflicts. Handy when a
   broken mod stops the game from starting, or when the in-game mod screen is
   slow.
-- **Save editor** *(experimental)* — remove mods from a `.Civ6Save` so it no
-  longer asks for them. UI-only mods are safe to drop; removing gameplay mods
-  may stop the save from loading. Writes a new copy by default.
+- **Save editor** *(experimental)* — add or remove mods in a `.Civ6Save`, e.g. so
+  it no longer asks for a missing mod. UI-only mods are safe either way; gameplay
+  mods may stop the save from loading. Writes a new copy by default.
 
 Website: <https://cru121.github.io/Civ6-Mod-Toolkit/>
 
