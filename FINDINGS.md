@@ -87,8 +87,8 @@ GUID matching still identifies it correctly (e.g. Got Lakes v37.0 vs v37.2).
   Note: titles are ASCII-encoded (pydt writer), so non-latin names degrade to
   `?` in the *display* title only — the mod still loads because the game keys off
   `MOD_ID`.
-- `src/edit-config.js` is the CLI the Phase 3 UI will call:
-  `npm run edit -- --config "x.Civ6Cfg" --add "Terra Mirabilis" --remove "..." [--out "y.Civ6Cfg"] [--dry-run] [--no-backup]`.
+- `src/config-cli.js` is the CLI for it (it replaced `edit-config.js`; same verbs as the other CLIs):
+  `npm run config -- add "x" "Terra Mirabilis" [--dry-run] [--overwrite] [--as "y"]`.
 
 `npm run phase2` runs the automated proof (operates only on scratch copies).
 

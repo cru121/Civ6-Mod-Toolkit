@@ -3,7 +3,7 @@
 // Command-line mod manager for Civ6 (for scripts and AI agents; see CLAUDE.md).
 // Output is always JSON on stdout; exit code is non-zero on any error.
 //
-//   node src/mods-cli.js status
+//   node src/mods-cli.js check                   # (`status` still works)
 //   node src/mods-cli.js list [--enabled|--disabled] [--search text] [--source workshop|local|dlc]
 //   node src/mods-cli.js enable  <id|name> [<id|name> ...] [--dry-run]
 //   node src/mods-cli.js disable <id|name> [<id|name> ...] [--dry-run]
@@ -14,8 +14,8 @@ const { normId } = require('./modinfo');
 const { applyChanges } = require('./modsdb');
 const { gameStatus } = require('./game');
 const { modList } = require('./modlist');
+const { plain, print, fail, parse, resolveMod } = require('./cli-common');
 
-const plain = (n) => String(n || '').replace(/\[[^\]]*\]/g, '').trim(); // drop Civ [COLOR_*] markup
 const slim = (m) => ({ id: m.id, name: plain(m.name), source: m.source, enabled: m.enabled, scanned: m.scanned });
 
 // A mod that ships a native .dll (usually a replacement GameCore) can conflict with
@@ -38,45 +38,17 @@ function detailed(m, byNorm) {
   return out;
 }
 
-function fail(message, extra = {}) {
-  console.log(JSON.stringify({ ok: false, error: message, ...extra }, null, 2));
-  process.exit(1);
-}
-
-function parse(argv) {
-  const out = { cmd: argv[0], tokens: [], flags: {} };
-  for (let i = 1; i < argv.length; i++) {
-    const a = argv[i];
-    if (a === '--search' || a === '--source') out.flags[a.slice(2)] = argv[++i];
-    else if (a.startsWith('--')) out.flags[a.slice(2)] = true;
-    else out.tokens.push(a);
-  }
-  return out;
-}
-
-// GUID, exact name, or unique name substring (case-insensitive, markup ignored).
-function resolve(token, mods) {
-  const t = token.trim().toLowerCase();
-  const byId = mods.find((m) => m.idNorm === normId(token));
-  if (byId) return byId;
-  const exact = mods.filter((m) => plain(m.name).toLowerCase() === t);
-  if (exact.length === 1) return exact[0];
-  const sub = exact.length ? exact : mods.filter((m) => plain(m.name).toLowerCase().includes(t));
-  if (sub.length === 1) return sub[0];
-  if (sub.length > 1) fail(`"${token}" is ambiguous; use the id`, { candidates: sub.map(slim) });
-  fail(`no mod matches "${token}"`);
-}
-
 async function main() {
-  const { cmd, tokens, flags } = parse(process.argv.slice(2));
-  if (!['status', 'list', 'enable', 'disable'].includes(cmd)) {
-    fail('usage: mods-cli.js status | list [--enabled|--disabled] [--search t] [--source s] | enable|disable <id|name>... [--dry-run]');
+  const { cmd: rawCmd, tokens, flags } = parse(process.argv.slice(2), ['search', 'source']);
+  const cmd = rawCmd === 'status' ? 'check' : rawCmd; // `status` is the old name for `check`
+  if (!['check', 'list', 'enable', 'disable'].includes(cmd)) {
+    fail('usage: mods-cli.js check | list [--enabled|--disabled] [--search t] [--source s] | enable|disable <id|name>... [--dry-run]');
   }
 
   const game = await gameStatus();
   const list = modList();
 
-  if (cmd === 'status') {
+  if (cmd === 'check') {
     const modsDb = paths.getModsDb();
     const counts = { total: 0, enabled: 0, disabled: 0, notScanned: 0 };
     for (const m of list.mods) {
@@ -88,10 +60,10 @@ async function main() {
     const dll = list.mods.filter((m) => m.enabled === true && shipsDll(m)).map((m) => plain(m.name));
     const warnings = [];
     if (dll.length) warnings.push(`${dll.length} enabled mod(s) ship a native DLL / replace GameCore: ${dll.join(', ')}`);
-    return console.log(JSON.stringify({
+    return print({
       ok: list.ok, error: list.error, gameRunning: game.running, modsDb: modsDb.path,
       activeGroup: list.activeGroup, counts, warnings,
-    }, null, 2));
+    });
   }
 
   if (!list.ok) fail(list.error || 'could not read the mod database');
@@ -103,13 +75,13 @@ async function main() {
     if (flags.disabled) mods = mods.filter((m) => m.enabled === false);
     if (flags.source) mods = mods.filter((m) => m.source === flags.source);
     if (flags.search) mods = mods.filter((m) => plain(m.name).toLowerCase().includes(String(flags.search).toLowerCase()));
-    return console.log(JSON.stringify({ ok: true, gameRunning: game.running, count: mods.length, mods: mods.map((m) => detailed(m, byNorm)) }, null, 2));
+    return print({ ok: true, gameRunning: game.running, count: mods.length, mods: mods.map((m) => detailed(m, byNorm)) });
   }
 
   // enable / disable
   if (!tokens.length) fail(`${cmd} needs at least one mod id or name`);
   const want = cmd === 'enable';
-  const picked = tokens.map((t) => resolve(t, list.mods));
+  const picked = tokens.map((t) => resolveMod(t, list.mods, { describe: slim }));
   for (const m of picked) {
     if (!m.scanned) fail(`"${plain(m.name)}" is installed but the game hasn't scanned it yet (start Civ6 once)`);
     if (m.enabled == null) fail(`"${plain(m.name)}" is not in the active mod group, so it can't be toggled`);
@@ -137,11 +109,11 @@ async function main() {
     changed: todo.map((m) => detailed(m, byNorm)), alreadyInState: picked.filter((m) => m.enabled === want).map(slim),
     warnings,
   };
-  if (!todo.length || flags['dry-run']) return console.log(JSON.stringify(result, null, 2));
+  if (!todo.length || flags['dry-run']) return print(result);
   if (game.running) fail('Civilization VI is running. Ask the user to close it, then retry.');
 
   const r = applyChanges(list.modsDb.path, todo.map((m) => ({ modId: m.id, enabled: want })));
-  console.log(JSON.stringify({ ...result, backup: r.backupPath, group: r.group }, null, 2));
+  print({ ...result, backup: r.backupPath, group: r.group });
 }
 
 main().catch((e) => fail(e.message));

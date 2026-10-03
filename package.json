@@ -20,7 +20,8 @@
     "phase9-selfcheck": "node src/server.js --selfcheck",
     "phase-game-setup": "node src/phase-game-setup.js",
     "check:release": "npm run phase4 && npm run phase5 && npm run phase6 && npm run phase7 && npm run phase8 && npm run phase9-replay && npm run phase9-shadowing && npm run phase10-packaging && npm run phase9-selfcheck && npm run phase-game-setup",
-    "edit": "node src/edit-config.js",
+    "config": "node src/config-cli.js",
+    "saves": "node src/saves-cli.js",
     "mods": "node src/mods-cli.js"
   },
   "author": "cru121 (Steam: evzenhouzvicka); contributions by Klear2012",

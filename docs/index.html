@@ -154,18 +154,21 @@ npm start</code></pre>
 
   <h2 id="cli">Command line and AI assistants</h2>
   <p>The mod manager is also available as a command that prints JSON, so scripts and AI assistants such as Claude can check and toggle mods without the browser. It is included since v1.2.0.</p>
-  <pre><code>node src/mods-cli.js status
+  <pre><code>node src/mods-cli.js check
 node src/mods-cli.js list --enabled --search "city"
 node src/mods-cli.js disable "Some Mod" --dry-run
 node src/mods-cli.js disable "Some Mod"
 
 node src/saves-cli.js check "AutoSave_0388"
-node src/saves-cli.js remove "AutoSave_0388" "Some Mod" --dry-run</code></pre>
+node src/saves-cli.js remove "AutoSave_0388" "Some Mod" --dry-run
+
+node src/config-cli.js add "my game" "Some Mod" --dry-run</code></pre>
   <ul>
     <li>A mod can be named by its id, its exact name, or a unique part of its name. If the name is ambiguous, the command lists the candidates.</li>
     <li><code>list</code> shows each mod's dependencies and conflicts. <code>enable</code> and <code>disable</code> print warnings, for example when an enabled mod needs the one you are turning off, or when more than one enabled mod ships a replacement <code>GameCore</code> DLL.</li>
     <li>It follows the same safety rules as the mod manager: it refuses to write while Civ6 is running, and it backs up <code>Mods.sqlite</code> first.</li>
     <li><code>saves-cli.js</code> does the same for mods inside saved games: <code>list</code>, <code>check</code>, <code>add</code> and <code>remove</code>. It writes a new copy of the save unless you pass <code>--overwrite</code>.</li>
+    <li><code>config-cli.js</code> does it for <code>.Civ6Cfg</code> game configurations with the same commands. All three tools share the grammar <code>list</code>, <code>check</code>, <code>add</code>/<code>remove</code> (mods in the game's own list use <code>enable</code>/<code>disable</code> instead) and <code>--dry-run</code>.</li>
     <li>To let Claude do it for you, point it at the toolkit folder. The <code>CLAUDE.md</code> file there explains the commands, so it doesn't need to read the code.</li>
   </ul>
 

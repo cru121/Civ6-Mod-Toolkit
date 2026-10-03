@@ -4,7 +4,7 @@ To **check, enable or disable Civ6 mods, don't read the source.** Use the CLI be
 exits non-zero on error. Run from this folder (Node.js required; dependencies are already installed).
 
 ```
-node src/mods-cli.js status                       # game running? active mod group, counts
+node src/mods-cli.js check                        # game running? active mod group, counts (`status` also works)
 node src/mods-cli.js list                         # every mod: id, name, source, enabled
 node src/mods-cli.js list --enabled|--disabled    # filter by state
 node src/mods-cli.js list --search "city" --source workshop   # source: workshop | local | dlc
@@ -12,12 +12,19 @@ node src/mods-cli.js enable  "<name or id>" ["<name or id>" ...] [--dry-run]
 node src/mods-cli.js disable "<name or id>" ["<name or id>" ...] [--dry-run]
 ```
 
+## One grammar for all three tools
+
+`mods-cli.js`, `saves-cli.js` and `config-cli.js` use the same verbs and flags: `list [--search]`, `check [<target>]`,
+`add|remove <target> <mod>...` (saves and configs) and `--dry-run`, `--overwrite`, `--as <name>`. Mods in the game's own
+list are *switched*, not added or removed (removing would mean uninstalling), so `mods-cli.js` has `enable`/`disable`
+instead of `add`/`remove`. Every answer is JSON with `ok`; a mod is named by GUID, exact name or unique part of a name.
+
 ## Rules
 
 - A mod can be given by its GUID, its exact name, or a unique part of its name (case-insensitive; Civ's
   `[COLOR_...]` markup is ignored). An ambiguous name fails and returns `candidates`. Retry with the `id`.
 - **Preview first.** Run with `--dry-run` and check `changed` / `alreadyInState` before applying.
-- **Civ6 must be closed.** Writes fail with an error while `CivilizationVI.exe` runs (`status` shows
+- **Civ6 must be closed.** Writes fail with an error while `CivilizationVI.exe` runs (`check` shows
   `gameRunning`). Don't try to work around it; ask the user to close the game.
 - Only mods in the game's active mod group can be toggled. A mod that is installed but has `scanned: false`
   needs the game started once so it scans the mod.
@@ -29,7 +36,7 @@ node src/mods-cli.js disable "<name or id>" ["<name or id>" ...] [--dry-run]
 - `list` and `enable`/`disable` show each mod's `requires` / `blocks` (with their current state), and
   `warnings` flags broken dependencies, e.g. disabling a mod that an enabled mod requires. Relay warnings to the user.
 - `shipsGameCoreDll: true` marks a mod that contains a native `.dll` (a replacement GameCore). Such mods can conflict
-  with each other and with game updates; `status` and `enable` warn when more than one is enabled.
+  with each other and with game updates; `check` and `enable` warn when more than one is enabled.
 
 ## Mods inside saved games (`.Civ6Save`)
 
@@ -57,6 +64,22 @@ node src/saves-cli.js remove "<save>" "<mod>" ["<mod>" ...] [--dry-run] [--overw
 - `check` warns about mods the save needs that aren't installed, which is the usual reason a save won't load.
 - The tool edits only the mod list in the file header and verifies the result before writing; the game data is untouched.
 
+## Mods inside game configurations (`.Civ6Cfg`)
+
+A `.Civ6Cfg` is the game setup a save is started from (it lists the mods). Same safety model as saves; it works while
+Civ6 runs.
+
+```
+node src/config-cli.js list [--search "text"]
+node src/config-cli.js check  "<config>"                      # mods in it, what can be added, warnings
+node src/config-cli.js add    "<config>" "<mod>" [...] [--dry-run] [--overwrite] [--as "<new name>"]
+node src/config-cli.js remove "<config>" "<mod>" [...] [--dry-run] [--overwrite] [--as "<new name>"]
+```
+
+- `<config>` is a file name (with or without `.Civ6Cfg`), a unique part of one, or a full path. By default the edit goes
+  to a **new copy** (`<name> (edited).Civ6Cfg`, or `--as`); `--overwrite` replaces the original after a backup.
+- Adding a mod the game hasn't scanned yet can make the game reject the configuration; `warnings` says so.
+
 ## Typical task
 
 "Disable all UI mods that make the report screen slow" translates to: `list --enabled`, pick the matching mods,
@@ -69,6 +92,4 @@ of the new file.
 ## Other things in this repo (only if the user asks)
 
 - Browser UI with a mod manager, `.Civ6Cfg` editor and save editor: `npm start` (http://127.0.0.1:8673).
-- `.Civ6Cfg` game-configuration editing from the command line: `node src/edit-config.js --help`-style flags
-  (`--config <file> --add/--remove <mod> [--dry-run]`).
 - Folder paths are auto-detected; overrides go in `civ6-paths.json` (see `civ6-paths.example.json`).
