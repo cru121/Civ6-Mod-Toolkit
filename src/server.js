@@ -233,7 +233,10 @@ async function handleApi(req, res, url) {
     if (!isConfigPath(p) || !fs.existsSync(p)) return send(res, 400, { error: 'invalid config path' });
     const installed = scanMods(paths.getSources());
     let view;
-    try { view = inventory.configView(fs.readFileSync(p), installed); }
+    const modsDb = paths.getModsDb();
+    const dbState = modsDb.exists ? readModState(modsDb.path) : { ok: false, mods: [] };
+    const scanned = dbState.ok ? new Set(dbState.mods.map((m) => m.idNorm)) : null;
+    try { view = inventory.configView(fs.readFileSync(p), installed, scanned); }
     catch (e) { return send(res, 500, { error: `parse failed: ${e.message}` }); }
     return send(res, 200, { path: p, name: path.basename(p), ...view });
   }

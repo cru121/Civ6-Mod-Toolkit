@@ -94,6 +94,7 @@ function render() {
     return `<label class="row ${pendingAdd ? 'pending-add' : ''}">
       <input type="checkbox" data-add="${esc(m.idNorm)}" ${pendingAdd ? 'checked' : ''} />
       <span class="name"><b>${renderCivText(m.name)}</b><small>${esc(m.id)}</small></span>
+      ${m.scanned === false ? '<span class="tag unscanned" title="The game has not scanned this mod yet">not scanned</span>' : ''}
       <span class="tag ${esc(m.type)}">${esc(m.type)}</span>
     </label>`;
   }).join('') || '<p class="hint">Nothing to add — every installed mod is already enabled.</p>';
@@ -133,6 +134,14 @@ $('page-config').addEventListener('change', (e) => {
 });
 
 async function doSave(mode) {
+  const unscanned = state.view.availableToAdd.filter((m) => state.addSet.has(m.idNorm) && m.scanned === false);
+  if (unscanned.length) {
+    const list = unscanned.map((m) => '  • ' + m.name).join('\n');
+    const msg = `The game has not scanned ${unscanned.length === 1 ? 'this mod' : 'these mods'} yet:\n\n${list}\n\n` +
+      'A config that lists mods the game does not know can be rejected, resetting settings such as the number of civilizations and dropping other mods. ' +
+      'Subscribe on the Workshop (or place it in the local Mods folder) and start Civ6 once first.\n\nAdd anyway?';
+    if (!confirm(msg)) return;
+  }
   const payload = {
     path: state.configPath,
     add: [...state.addSet],

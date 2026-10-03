@@ -49,7 +49,8 @@ function diff(configBuffer, installed) {
 }
 
 // A UI-friendly view of one config against the installed inventory.
-function configView(configBuffer, installed) {
+// scannedNorms: Set of ids the game has in Mods.sqlite, or null if unreadable.
+function configView(configBuffer, installed, scannedNorms = null) {
   const d = diff(configBuffer, installed);
   const installedByNorm = new Map(installed.map((m) => [m.idNorm, m]));
   const enabled = d.enabled.map((e) => {
@@ -63,7 +64,9 @@ function configView(configBuffer, installed) {
       type: inst ? inst.type : 'dlc',
     };
   });
-  return { enabled, availableToAdd: d.availableToAdd };
+  // scanned=false: on disk but unknown to the game; adding it can make the game reject the config.
+  const availableToAdd = d.availableToAdd.map((m) => ({ ...m, scanned: scannedNorms ? scannedNorms.has(m.idNorm) : null }));
+  return { enabled, availableToAdd };
 }
 
 module.exports = { diff, humanTitle, configView };

@@ -17,6 +17,7 @@ const cfg = require('./civ6cfg');
 const { scanMods, normId } = require('./modinfo');
 const { humanTitle } = require('./inventory');
 const { saveConfig } = require('./editor');
+const { readModState } = require('./modsdb');
 
 function parseArgs(argv) {
   const out = { adds: [], removes: [], backup: true, dryRun: false };
@@ -83,6 +84,18 @@ function main() {
   if (adds.length === 0 && removes.length === 0) {
     console.log('Nothing to do.');
     return;
+  }
+
+  const modsDb = paths.getModsDb();
+  const st = modsDb.exists ? readModState(modsDb.path) : null;
+  if (st && st.ok) {
+    const known = new Set(st.mods.map((m) => m.idNorm));
+    for (const a of adds) {
+      if (!known.has(normId(a.id))) {
+        console.warn(`WARNING: "${a.name}" is not in the game's mod database yet (not subscribed / not scanned). ` +
+          'A config listing a mod the game does not know can be rejected, resetting settings. Start Civ6 once first.');
+      }
+    }
   }
 
   console.log(`Config : ${args.config}`);
