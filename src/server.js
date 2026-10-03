@@ -1353,7 +1353,7 @@ async function handleApi(req, res, url) {
     for (const c of changes) {
       const m = byNorm.get(normId(c && c.id));
       if (!m) return send(res, 400, { error: `unknown mod: ${c && c.id}` });
-      if (!m.scanned) return send(res, 400, { error: `"${m.name}" can't be changed until the game has scanned it (start Civ6 once).` });
+      if (!m.scanned) return send(res, 400, { error: `"${m.name}" can't be changed until the game has scanned it (close Civ6 and click "Rescan & add new mods" on the dashboard).` });
       if (m.enabled == null) return send(res, 400, { error: `"${m.name}" isn't in the game's active mod group, so it can't be turned on or off.` });
       clean.push({ modId: m.id, enabled: !!c.enabled });
     }

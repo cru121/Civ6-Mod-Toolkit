@@ -83,7 +83,7 @@ async function main() {
   const want = cmd === 'enable';
   const picked = tokens.map((t) => resolveMod(t, list.mods, { describe: slim }));
   for (const m of picked) {
-    if (!m.scanned) fail(`"${plain(m.name)}" is installed but the game hasn't scanned it yet (start Civ6 once)`);
+    if (!m.scanned) fail(`"${plain(m.name)}" is installed but the game hasn't registered it yet (close Civ6 and use "Rescan & add new mods" on the web UI dashboard)`);
     if (m.enabled == null) fail(`"${plain(m.name)}" is not in the active mod group, so it can't be toggled`);
   }
   const todo = picked.filter((m) => m.enabled !== want);

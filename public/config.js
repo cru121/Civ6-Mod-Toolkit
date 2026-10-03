@@ -139,7 +139,7 @@ async function doSave(mode) {
     const list = unscanned.map((m) => '  • ' + m.name).join('\n');
     const msg = `The game has not scanned ${unscanned.length === 1 ? 'this mod' : 'these mods'} yet:\n\n${list}\n\n` +
       'A config that lists mods the game does not know can be rejected, resetting settings such as the number of civilizations and dropping other mods. ' +
-      'Subscribe on the Workshop (or place it in the local Mods folder) and start Civ6 once first.\n\nAdd anyway?';
+      'Close Civ6, then click "Rescan & add new mods" on the Dashboard to register them (they stay switched off), and come back.\n\nAdd anyway?';
     if (!confirm(msg)) return;
   }
   const payload = {

@@ -102,7 +102,7 @@ function main() {
   const warnings = [];
   if (adding) {
     for (const m of picked) {
-      if (m.scanned === false) warnings.push(`"${plain(m.name)}" is not in the game's mod database yet (not scanned): a configuration listing a mod the game does not know can be rejected, resetting settings. Start Civ6 once first.`);
+      if (m.scanned === false) warnings.push(`"${plain(m.name)}" is not in the game's mod database yet (not scanned): a configuration listing a mod the game does not know can be rejected, resetting settings. With Civ6 closed, click "Rescan & add new mods" on the dashboard (web UI) to register it first.`);
     }
   }
 

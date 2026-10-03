@@ -27,7 +27,8 @@ instead of `add`/`remove`. Every answer is JSON with `ok`; a mod is named by GUI
 - **Civ6 must be closed.** Writes fail with an error while `CivilizationVI.exe` runs (`check` shows
   `gameRunning`). Don't try to work around it; ask the user to close the game.
 - Only mods in the game's active mod group can be toggled. A mod that is installed but has `scanned: false`
-  needs the game started once so it scans the mod.
+  is not registered yet: with Civ6 closed, the web UI's dashboard button "Rescan & add new mods" (or its startup
+  rescan) registers it, switched off. Ask the user to do that.
 - Official DLC and expansions (`source: dlc`) are listed too. Don't toggle those unless the user explicitly asks.
 - What gets changed is the `Disabled` flag in `Mods.sqlite` (the game's own mod list, in
   `%LOCALAPPDATA%\Firaxis Games\Sid Meier's Civilization VI`). Every write backs it up first to
