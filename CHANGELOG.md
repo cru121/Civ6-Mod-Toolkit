@@ -79,6 +79,10 @@ licence and the original copyright are unchanged.
   (`<name> (edited).Civ6Cfg`, or `--as`). `--overwrite` replaces the original after
   a backup. `--config`, `--out` and `--no-backup` are gone, and `npm run edit` is
   now `npm run config`.
+- The warnings about mods the game has not scanned (config editor, `config-cli`,
+  `mods-cli`) now say to close Civ6 and click **Rescan & add new mods**, instead of
+  starting Civ6 once. The Load order pages show the built-in profile as "Default"
+  rather than its internal key.
 - Save editor now comes before Mod manager in the top menu, so Load order and
   Conflicts sit next to the mod manager.
 - The mod list shown by the web server and `mods-cli.js` is now the same code
@@ -109,8 +113,6 @@ licence and the original copyright are unchanged.
 - The fork's own history is kept in the git log. Its detailed per-release notes
   (v1.1.0 to v1.9.1) described version numbers that were never released from this
   repository, so they are summarised here instead.
-- **Not yet tested by hand:** the merged interface has been run against real data
-  only through the automated suites and a short look at the menu.
 
 ## v1.2.0 — 3 October 2026
 

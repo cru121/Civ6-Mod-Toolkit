@@ -114,7 +114,7 @@ jobs:
           $include = @(
             'Civ6 Mod Toolkit.cmd', 'src', 'public', 'docs', 'fixtures',
             'package.json', 'package-lock.json', 'README.md', 'CHANGELOG.md',
-            'FINDINGS.md', 'LICENSE', 'civ6-paths.example.json'
+            'FINDINGS.md', 'LICENSE', 'civ6-paths.example.json', 'CLAUDE.md'
           )
           foreach ($item in $include) {
             $path = Join-Path $env:GITHUB_WORKSPACE $item
