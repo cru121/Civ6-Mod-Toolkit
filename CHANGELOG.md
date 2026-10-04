@@ -2,7 +2,7 @@
 
 All notable changes to this project are recorded here.
 
-## v2.0.0 — unreleased
+## v2.0.0 — 4 October 2026
 
 A combined release. It merges the mod manager work from
 [Klear2012's fork](https://github.com/Klear2012/Civ6-Mod-Toolkit) (which went through
