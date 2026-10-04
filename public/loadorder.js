@@ -282,11 +282,11 @@ function renderHeader() {
   $('loNote').innerHTML = s ? noteHtml(s) : '';
 
   const sel = $('loProfile');
-  if (d) sel.innerHTML = d.groups.map((g) => `<option value="${g.id}"${d.profile && g.id === d.profile.id ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
+  if (d) sel.innerHTML = d.groups.map((g) => `<option value="${g.id}"${d.profile && g.id === d.profile.id ? ' selected' : ''}>${esc(groupLabel(g))}</option>`).join('');
 
   const cmp = d && d.compare;
   $('loCompare').hidden = !cmp;
-  $('loCompare').textContent = cmp ? `Comparing with "${cmp.name}" — clear` : 'Clear comparison';
+  $('loCompare').textContent = cmp ? `Comparing with "${groupLabel(cmp)}" — clear` : 'Clear comparison';
 }
 
 // Component types for the action-mode dropdown, derived from the loaded

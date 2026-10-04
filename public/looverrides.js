@@ -315,10 +315,10 @@ function lovEditRenderProfile() {
   const d = lov.bands;
   const sel = $('lovProfile');
   if (d && d.ok) {
-    sel.innerHTML = (d.groups || []).map((g) => `<option value="${esc(g.id)}"${d.profile && String(g.id) === String(d.profile.id) ? ' selected' : ''}>${esc(g.name)}</option>`).join('');
+    sel.innerHTML = (d.groups || []).map((g) => `<option value="${esc(g.id)}"${d.profile && String(g.id) === String(d.profile.id) ? ' selected' : ''}>${esc(groupLabel(g))}</option>`).join('');
     const s = d.summary || {};
     $('lovProfileMeta').textContent = d.profile
-      ? `${d.profile.name} · ${n(s.modsOn)} mods on · ${n(s.positioned)} positioned`
+      ? `${groupLabel(d.profile)} · ${n(s.modsOn)} mods on · ${n(s.positioned)} positioned`
       : '';
   } else {
     sel.innerHTML = '';
